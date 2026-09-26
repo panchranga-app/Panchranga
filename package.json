@@ -8,10 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed-sources.ts",
+    "clean": "tsx scripts/clear-all.ts",
     "fetch-rss": "tsx scripts/fetch-rss.ts",
     "cluster": "tsx scripts/cluster-items.ts",
     "summarize": "tsx scripts/summarize-hubs.ts",
-    "pipeline": "tsx scripts/fetch-rss.ts && tsx scripts/cluster-items.ts && tsx scripts/summarize-hubs.ts"
+    "pipeline": "tsx scripts/fetch-rss.ts && tsx scripts/cluster-items.ts",
+    "pipeline:full": "tsx scripts/fetch-rss.ts && tsx scripts/cluster-items.ts && tsx scripts/summarize-hubs.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

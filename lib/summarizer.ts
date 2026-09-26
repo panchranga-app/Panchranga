@@ -16,6 +16,11 @@ const SENSITIVE_KEYWORDS = [
   'curfew imposed',
 ];
 
+// Circuit breaker cooldown timestamps (in milliseconds)
+let groqCooldownUntil = 0;
+let geminiCooldownUntil = 0;
+let openRouterCooldownUntil = 0;
+
 export interface SummaryResult {
   summary: string | null;
   isFlagged: boolean;
@@ -111,6 +116,7 @@ export async function generateNeutralSummary(hub: TopicHub): Promise<SummaryResu
 
   const groqKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
 
   const prompt = `You are a neutral news editor.
 Write a concise, fact-rich 1-2 sentence neutral briefing (max 35 words) capturing the key event, concrete facts, numbers, and locations.
@@ -126,8 +132,17 @@ ${headlines.join('\n')}
 ${articleExcerpt}
 Neutral briefing:`;
 
+  const cleanGeneratedText = (rawText: string): string => {
+    return rawText
+      .replace(/^["'“‘]+|["'”’]+$/g, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^Mainstream media coverage highlights\s*/i, '')
+      .replace(/\s*as reported by.*$/i, '')
+      .trim();
+  };
+
   // 1. Try Groq (Ultra-fast inference)
-  if (groqKey) {
+  if (groqKey && Date.now() > groqCooldownUntil) {
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -156,32 +171,35 @@ Neutral briefing:`;
         const json = await response.json();
         const text = json.choices?.[0]?.message?.content?.trim();
         if (text) {
-          const cleanText = text
-            .replace(/^["'“‘]+|["'”’]+$/g, '')
-            .replace(/^Mainstream media coverage highlights\s*/i, '')
-            .replace(/\s*as reported by.*$/i, '');
-          return { summary: cleanText, isFlagged: false };
+          return { summary: cleanGeneratedText(text), isFlagged: false };
         }
       } else {
         const errJson = await response.json().catch(() => ({}));
-        console.warn('⚠️ Groq API responded with error:', errJson?.error?.message || response.statusText);
+        const errMsg = errJson?.error?.message || response.statusText;
+        console.warn('⚠️ Groq API responded with error:', errMsg);
+        if (response.status === 429) {
+          const isDaily = errMsg.toLowerCase().includes('tokens per day') || errMsg.toLowerCase().includes('tpd');
+          groqCooldownUntil = Date.now() + (isDaily ? 60 * 60 * 1000 : 60 * 1000);
+          console.warn(`⏳ Groq in cooldown for ${isDaily ? '60 mins (daily limit)' : '60 secs'}. Failing over...`);
+        }
       }
     } catch (e) {
       console.warn('⚠️ Groq API summary call failed, falling back...', e);
     }
   }
 
-  // 2. Try Gemini
-  if (geminiKey) {
+  // 2. Try Google Gemini Flash (Generous daily quota: 1,500 req/day, 1M TPM)
+  if (geminiKey && Date.now() > geminiCooldownUntil) {
     try {
+      const geminiModel = 'gemini-3.8-flash';
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 50, temperature: 0.2 },
+            generationConfig: { maxOutputTokens: 300, temperature: 0.2 },
           }),
         }
       );
@@ -190,19 +208,75 @@ Neutral briefing:`;
         const json = await response.json();
         const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (text) {
-          const cleanText = text
-            .replace(/^["'“‘]+|["'”’]+$/g, '')
-            .replace(/^Mainstream media coverage highlights\s*/i, '')
-            .replace(/\s*as reported by.*$/i, '');
-          return { summary: cleanText, isFlagged: false };
+          return { summary: cleanGeneratedText(text), isFlagged: false };
+        }
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        console.warn('⚠️ Gemini API responded with error:', errJson?.error?.message || response.statusText);
+        if (response.status === 429) {
+          geminiCooldownUntil = Date.now() + 60 * 1000;
         }
       }
     } catch (e) {
-      console.warn('⚠️ Gemini API summary call failed, using rule-based neutral synthesizer.', e);
+      console.warn('⚠️ Gemini API summary call failed, falling back to OpenRouter...', e);
     }
   }
 
-  // Fallback: clean single sentence without quotes or "as reported by"
+  // 3. Try OpenRouter (Multi-model free tier fallback)
+  if (openrouterKey && Date.now() > openRouterCooldownUntil) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app',
+          'X-Title': 'Panchranga',
+        },
+        body: JSON.stringify({
+          model: 'nvidia/nemotron-3.5-lightning:free',
+          models: [
+            'nvidia/nemotron-3.5-lightning:free',
+            'inclusionai/ling-3.0-flash-sante:free',
+            'liquid/lfm-2.5-2.6b:free',
+          ],
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a neutral news editor. Write a concise, fact-rich 1-2 sentence neutral briefing (max 35 words) capturing the key event, concrete facts, numbers, and locations. Plain English only. No source names, no quotes.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          max_tokens: 150,
+          temperature: 0.2,
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const text = (json.choices?.[0]?.message?.content || json.choices?.[0]?.message?.reasoning || '').trim();
+        if (text) {
+          const cleanText = cleanGeneratedText(text);
+          if (cleanText.length > 10) {
+            return { summary: cleanText, isFlagged: false };
+          }
+        }
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        console.warn('⚠️ OpenRouter API responded with error:', errJson?.error?.message || response.statusText);
+        if (response.status === 429) {
+          openRouterCooldownUntil = Date.now() + 60 * 1000;
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ OpenRouter API call failed, falling back to rule-based...', e);
+    }
+  }
+
+  // 4. Fallback: clean single sentence without quotes or "as reported by"
   return {
     summary: defaultFallback,
     isFlagged: false,

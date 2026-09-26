@@ -99,8 +99,8 @@ async function runSummarization() {
       console.log(`  ✨ [AI Summary] "${summary.slice(0, 70)}..."`);
     }
 
-    // Delay between calls to respect Groq free tier 1,000 OTPM rate limit
-    await new Promise((r) => setTimeout(r, 600));
+    // Delay between calls to respect provider free tier RPM limits (15 RPM / 30 RPM)
+    await new Promise((r) => setTimeout(r, 4100));
   }
 
   // 2. Process Single-Item Hubs (extract clean descriptive summary or headline)

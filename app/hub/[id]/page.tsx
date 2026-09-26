@@ -6,6 +6,7 @@ import { TopicHub, RawItem } from '@/lib/types';
 import { checkSensitiveBypass } from '@/lib/summarizer';
 import CoverageBar from '@/components/CoverageBar';
 import SafeImage from '@/components/SafeImage';
+import HubAiOverview from '@/components/HubAiOverview';
 import { timeAgo } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
 
@@ -129,7 +130,6 @@ export default async function HubDetailPage({ params }: PageProps) {
   const discourseItems = safeItems.filter((i) => i.lane === 'discourse');
 
   const isSensitive = checkSensitiveBypass(hub);
-  const showAiSummary = safeItems.length >= 2 && !isSensitive && Boolean(hub.ai_summary);
 
   return (
     <div className="max-w-[1320px] mx-auto space-y-6 pb-12">
@@ -164,31 +164,13 @@ export default async function HubDetailPage({ params }: PageProps) {
         />
       </div>
 
-      {/* 3. AI Overview Box (if exists) */}
-      {showAiSummary && (
-        <div className="p-5 bg-[#F5F5F3] border-l-4 border-l-[#C0392B] space-y-2 text-xs rounded-r-lg">
-          <div className="text-[11px] font-mono tracking-wider uppercase text-[#6B6B6B] font-semibold">
-            AI OVERVIEW
-          </div>
-          <p className="font-serif-title text-base sm:text-lg italic text-[#1A1A1A] leading-relaxed">
-            "{hub.ai_summary}"
-          </p>
-          <p className="text-[11px] text-[#6B6B6B] pt-1">
-            This is AI-generated from public headlines only. Read original sources to verify.
-          </p>
-        </div>
-      )}
-
-      {isSensitive && (
-        <div className="p-4 bg-[#F5F5F3] border-l-4 border-l-[#C0392B] text-xs text-[#1A1A1A] space-y-1 rounded-r-lg">
-          <p className="font-semibold text-[#C0392B] uppercase text-[11px] font-mono">
-            Sources-Only Mode Active
-          </p>
-          <p className="text-[#6B6B6B]">
-            AI overview is bypassed for high-stakes sensitive topics. Displaying publisher reports directly below.
-          </p>
-        </div>
-      )}
+      {/* 3. AI Overview Box (On-demand or cached) */}
+      <HubAiOverview
+        hubId={hub.id}
+        initialSummary={hub.ai_summary}
+        isSensitive={isSensitive}
+        itemCount={safeItems.length}
+      />
 
       {/* 4. Three Lane Columns Side by Side */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-[#E5E5E0]">
