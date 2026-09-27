@@ -160,3 +160,48 @@ export function deduplicateAggregatorItems<T extends { title: string; published_
     hitLog,
   };
 }
+
+/**
+ * Checks if a candidate item is a duplicate of any item already inside a Topic Hub:
+ * 1. Exact URL match
+ * 2. Exact normalized title match (after stripping publisher suffix)
+ * 3. High word token Jaccard similarity (>= 0.85)
+ */
+export function isWithinHubDuplicate<T extends { title: string; url?: string }>(
+  candidate: T,
+  existingHubItems: T[]
+): { isDuplicate: boolean; matchedItem?: T; reason?: string } {
+  if (!existingHubItems || existingHubItems.length === 0) {
+    return { isDuplicate: false };
+  }
+
+  const candUrl = (candidate.url || '').trim();
+  const candNorm = normalizeTitle(candidate.title);
+
+  for (const existing of existingHubItems) {
+    const existUrl = (existing.url || '').trim();
+
+    // 1. Exact URL match
+    if (candUrl && existUrl && candUrl === existUrl) {
+      return { isDuplicate: true, matchedItem: existing, reason: 'exact_url' };
+    }
+
+    if (!candNorm) continue;
+    const existNorm = normalizeTitle(existing.title);
+    if (!existNorm) continue;
+
+    // 2. Exact normalized title match
+    if (candNorm === existNorm) {
+      return { isDuplicate: true, matchedItem: existing, reason: 'exact_normalized_title' };
+    }
+
+    // 3. High token Jaccard similarity (>= 0.85)
+    const sim = wordJaccardSimilarity(candNorm, existNorm);
+    if (sim >= 0.85) {
+      return { isDuplicate: true, matchedItem: existing, reason: `jaccard_${(sim * 100).toFixed(0)}%` };
+    }
+  }
+
+  return { isDuplicate: false };
+}
+

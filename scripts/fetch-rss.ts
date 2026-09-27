@@ -53,6 +53,8 @@ interface IngestedItem {
   category: string;
   og_image?: string;
   og_description?: string;
+  via_google_news?: boolean;
+  english_gloss?: string;
   fetched_at: string;
 }
 
@@ -149,12 +151,7 @@ async function fetchSingleSource(source: any): Promise<IngestedItem[]> {
   // 2. RSS / Atom / Google News syndication feed
   let targetUrl = source.feed_url;
   const fallbackUrl = FEED_FALLBACKS[source.name];
-
-  // If source has a known syndication fallback (Cloudflare, low volume, or malformed XML), default to fallback
-  if (fallbackUrl) {
-    targetUrl = fallbackUrl;
-  }
-
+  let isFallbackUsed = false;
   let feed: any = null;
 
   try {
@@ -163,7 +160,7 @@ async function fetchSingleSource(source: any): Promise<IngestedItem[]> {
         'User-Agent': USER_AGENT,
         'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*;q=0.9',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) {
@@ -173,9 +170,31 @@ async function fetchSingleSource(source: any): Promise<IngestedItem[]> {
     const xmlText = await res.text();
     feed = await parser.parseString(sanitizeXml(xmlText));
   } catch (err: any) {
-    // If original failed and fallback is available, try syndication fallback
-    if (fallbackUrl && fallbackUrl !== targetUrl) {
-      feed = await parser.parseURL(fallbackUrl);
+    // Audit observation: Outlets like Livemint or HT may block direct crawlers.
+    // Try primary feed first, and only fall back to Google News syndication proxy if direct fails.
+    if (fallbackUrl) {
+      try {
+        console.log(`ℹ️ [Anti-WAF] Primary feed failed for ${source.name} (${err.message}). Using syndication fallback.`);
+        isFallbackUsed = true;
+        targetUrl = fallbackUrl;
+
+        const res = await fetch(fallbackUrl, {
+          headers: {
+            'User-Agent': USER_AGENT,
+            'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*;q=0.9',
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (res.ok) {
+          const xmlText = await res.text();
+          feed = await parser.parseString(sanitizeXml(xmlText));
+        } else {
+          feed = await parser.parseURL(fallbackUrl);
+        }
+      } catch (fbErr: any) {
+        throw new Error(`Primary (${err.message}) and Fallback (${fbErr.message}) both failed`);
+      }
     } else {
       throw err;
     }
@@ -203,17 +222,20 @@ async function fetchSingleSource(source: any): Promise<IngestedItem[]> {
 
     const cleanTitle = (item.title || 'Untitled Article').trim();
     const { topic } = getCategoryAndRegion(cleanTitle, source.region, source.lane, source.name);
+    const itemUrl = (item.link || item.guid || '').trim();
+    const isGoogleNews = isFallbackUsed || itemUrl.includes('news.google.com') || targetUrl.includes('news.google.com');
 
     return {
       source_id: source.id,
       source_name: source.name,
       lane: source.lane as any,
       title: cleanTitle,
-      url: (item.link || item.guid || '').trim(),
+      url: itemUrl,
       published_at: item.isoDate || item.pubDate || new Date().toISOString(),
       raw_summary: cleanSummary,
       category: topic,
       og_image: enclosureImage,
+      via_google_news: isGoogleNews,
       fetched_at: new Date().toISOString(),
     };
   }).filter((item: any) => item.url.startsWith('http'));

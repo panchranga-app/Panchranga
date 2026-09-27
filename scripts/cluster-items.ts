@@ -70,17 +70,22 @@ async function runClustering() {
   let cachedEmbedded = 0;
 
   for (const item of rawItems) {
-    if (!item.embedding && localEmbedMap.has(item.url)) {
+    const hasBoilerplate = Boolean(
+      item.raw_summary &&
+      (item.raw_summary.toLowerCase().includes('google news') ||
+       item.raw_summary.toLowerCase().includes('comprehensive up-to-date'))
+    );
+
+    if (!hasBoilerplate && !item.embedding && localEmbedMap.has(item.url)) {
       item.embedding = localEmbedMap.get(item.url);
     }
 
-    if (item.embedding && Array.isArray(item.embedding) && item.embedding.length > 0) {
+    if (!hasBoilerplate && item.embedding && Array.isArray(item.embedding) && item.embedding.length > 0) {
       cachedEmbedded++;
       continue;
     }
 
-    const textToEmbed = `${item.title}. ${item.raw_summary || ''}`;
-    item.embedding = await generateEmbedding(textToEmbed);
+    item.embedding = await generateEmbedding(item.title, item.raw_summary);
     newlyEmbedded++;
   }
   console.log(`✅ Embeddings ready: ${newlyEmbedded} newly computed, ${cachedEmbedded} loaded from cache.`);

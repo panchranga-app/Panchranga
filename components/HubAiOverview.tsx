@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 interface HubAiOverviewProps {
   hubId: string;
   initialSummary?: string | null;
+  fallbackHeadline?: string;
   isSensitive?: boolean;
   itemCount?: number;
 }
@@ -12,12 +13,14 @@ interface HubAiOverviewProps {
 export default function HubAiOverview({
   hubId,
   initialSummary,
+  fallbackHeadline,
   isSensitive = false,
   itemCount = 2,
 }: HubAiOverviewProps) {
   const [summary, setSummary] = useState<string | null>(initialSummary || null);
   const [loading, setLoading] = useState<boolean>(!initialSummary && !isSensitive && itemCount >= 2);
   const [isLiveGenerated, setIsLiveGenerated] = useState<boolean>(false);
+  const [isCached, setIsCached] = useState<boolean>(Boolean(initialSummary));
 
   useEffect(() => {
     // If summary is already provided, or if topic is sensitive, or single item, no need to fetch
@@ -29,7 +32,15 @@ export default function HubAiOverview({
     let isMounted = true;
     setLoading(true);
 
-    fetch(`/api/hub/${encodeURIComponent(hubId)}/summary`)
+    // Client-side 7-second timeout safeguard to prevent infinite loading spinners
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 7000);
+
+    fetch(`/api/hub/${encodeURIComponent(hubId)}/summary`, {
+      signal: controller.signal,
+    })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -37,15 +48,20 @@ export default function HubAiOverview({
       .then((data) => {
         if (isMounted && data.summary) {
           setSummary(data.summary);
+          setIsCached(Boolean(data.cached));
           if (!data.cached) {
             setIsLiveGenerated(true);
           }
         }
       })
       .catch((err) => {
-        console.warn('⚠️ Could not load on-demand AI summary:', err);
+        console.warn('⚠️ On-demand AI summary timed out or failed, falling back:', err);
+        if (isMounted && !summary && fallbackHeadline) {
+          setSummary(fallbackHeadline);
+        }
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         if (isMounted) {
           setLoading(false);
         }
@@ -53,8 +69,10 @@ export default function HubAiOverview({
 
     return () => {
       isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
     };
-  }, [hubId, summary, isSensitive, itemCount]);
+  }, [hubId, summary, isSensitive, itemCount, fallbackHeadline]);
 
   // High-stakes sensitive topic bypass
   if (isSensitive) {
@@ -75,7 +93,7 @@ export default function HubAiOverview({
     return null;
   }
 
-  // Loading state (while generating on the fly)
+  // Loading state (while generating on the fly, max 7 seconds before timeout fallback)
   if (loading && !summary) {
     return (
       <div className="p-5 bg-[#F5F5F3] border-l-4 border-l-[#C0392B] space-y-3 text-xs rounded-r-lg animate-pulse">
@@ -102,9 +120,13 @@ export default function HubAiOverview({
           <span className="text-[11px] font-mono tracking-wider uppercase text-[#6B6B6B] font-semibold">
             AI OVERVIEW
           </span>
-          {isLiveGenerated && (
+          {isLiveGenerated ? (
             <span className="text-[10px] font-mono text-[#27AE60] bg-[#E8F8F5] px-2 py-0.5 rounded-full border border-[#A3E4D7]">
               ● LIVE BRIEFING
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono text-[#6B7280] bg-[#F3F4F6] px-2 py-0.5 rounded-full border border-[#E5E7EB]">
+              ● CACHED
             </span>
           )}
         </div>

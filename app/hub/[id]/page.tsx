@@ -58,6 +58,8 @@ async function getHubData(id: string): Promise<TopicHub | null> {
             ...item,
             lane: src?.lane || item.lane || 'mainstream',
             source_name: src?.name || item.source_name || 'Unknown',
+            via_google_news: item.via_google_news || (item.url && item.url.includes('news.google.com')),
+            english_gloss: item.english_gloss,
             sources: src,
             source: src,
           };
@@ -86,6 +88,8 @@ async function getHubData(id: string): Promise<TopicHub | null> {
             ...item,
             lane: src?.lane || item.lane || 'mainstream',
             source_name: src?.name || item.source_name || 'Unknown',
+            via_google_news: item.via_google_news || (item.url && item.url.includes('news.google.com')),
+            english_gloss: item.english_gloss,
             sources: src,
             source: src,
           };
@@ -150,6 +154,11 @@ export default async function HubDetailPage({ params }: PageProps) {
         <h1 className="font-serif-title text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-[#1A1A1A]">
           {hub.title ?? 'Untitled Topic Hub'}
         </h1>
+        {hub.english_gloss && hub.english_gloss !== hub.title && (
+          <p className="text-base sm:text-lg text-[#6B6B6B] italic font-serif pt-1">
+            EN: &ldquo;{hub.english_gloss}&rdquo;
+          </p>
+        )}
       </div>
 
       {/* 2. Coverage Bar */}
@@ -168,6 +177,7 @@ export default async function HubDetailPage({ params }: PageProps) {
       <HubAiOverview
         hubId={hub.id}
         initialSummary={hub.ai_summary}
+        fallbackHeadline={hub.title}
         isSensitive={isSensitive}
         itemCount={safeItems.length}
       />
@@ -255,6 +265,8 @@ function ArticleCard({ item }: { item: RawItem }) {
       ? '· Grassroots'
       : '· Public Discourse';
 
+  const isGoogleNews = Boolean(item.via_google_news || (item.url && item.url.includes('news.google.com')));
+
   const sourceHeader = (
     <div
       style={{
@@ -262,6 +274,7 @@ function ArticleCard({ item }: { item: RawItem }) {
         alignItems: 'center',
         gap: '8px',
         marginBottom: '6px',
+        flexWrap: 'wrap',
       }}
     >
       <span
@@ -276,6 +289,14 @@ function ArticleCard({ item }: { item: RawItem }) {
       >
         {sourceName}
       </span>
+      {isGoogleNews && (
+        <span
+          className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] font-medium"
+          title="Aggregated via Google News redirect"
+        >
+          via Google News
+        </span>
+      )}
       <span
         style={{
           fontSize: '11px',
@@ -314,6 +335,16 @@ function ArticleCard({ item }: { item: RawItem }) {
         <h4 className="font-serif-title text-[17px] font-bold text-[#1A1A1A] leading-snug">
           {item.title ?? 'Untitled Video'}
         </h4>
+        {item.english_gloss && item.english_gloss !== item.title && (
+          <p className="text-[13px] text-[#6B6B6B] italic font-serif leading-snug flex items-center gap-1.5 pt-0.5">
+            {item.sources?.language && item.sources.language !== 'en' && (
+              <span className="not-italic text-[9px] font-mono font-bold uppercase px-1 py-0.5 rounded bg-[#F0EFEB] text-[#4A4A4A] border border-[#DDDCD7]">
+                {item.sources.language.toUpperCase()}
+              </span>
+            )}
+            <span>EN: &ldquo;{item.english_gloss}&rdquo;</span>
+          </p>
+        )}
         <div className="pt-1">
           <a
             href={item.url}
@@ -321,7 +352,7 @@ function ArticleCard({ item }: { item: RawItem }) {
             rel="noopener noreferrer"
             className="text-xs text-[#C0392B] hover:underline font-semibold"
           >
-            Watch at {sourceName} →
+            Watch at {sourceName} {isGoogleNews ? '(via Google News)' : ''} →
           </a>
         </div>
       </div>
@@ -336,6 +367,16 @@ function ArticleCard({ item }: { item: RawItem }) {
         <h4 className="font-serif-title text-[17px] font-bold text-[#1A1A1A] leading-snug">
           {item.title ?? 'Untitled Thread'}
         </h4>
+        {item.english_gloss && item.english_gloss !== item.title && (
+          <p className="text-[13px] text-[#6B6B6B] italic font-serif leading-snug flex items-center gap-1.5 pt-0.5">
+            {item.sources?.language && item.sources.language !== 'en' && (
+              <span className="not-italic text-[9px] font-mono font-bold uppercase px-1 py-0.5 rounded bg-[#F0EFEB] text-[#4A4A4A] border border-[#DDDCD7]">
+                {item.sources.language.toUpperCase()}
+              </span>
+            )}
+            <span>EN: &ldquo;{item.english_gloss}&rdquo;</span>
+          </p>
+        )}
         {item.og_description && (
           <p className="text-[13px] text-[#6B6B6B] line-clamp-2 leading-relaxed">
             {item.og_description}
@@ -375,6 +416,17 @@ function ArticleCard({ item }: { item: RawItem }) {
             {item.title ?? 'Untitled Article'}
           </h4>
 
+          {item.english_gloss && item.english_gloss !== item.title && (
+            <p className="text-[13px] text-[#6B6B6B] italic font-serif leading-snug flex items-center gap-1.5 pt-0.5">
+              {item.sources?.language && item.sources.language !== 'en' && (
+                <span className="not-italic text-[9px] font-mono font-bold uppercase px-1 py-0.5 rounded bg-[#F0EFEB] text-[#4A4A4A] border border-[#DDDCD7]">
+                  {item.sources.language.toUpperCase()}
+                </span>
+              )}
+              <span>EN: &ldquo;{item.english_gloss}&rdquo;</span>
+            </p>
+          )}
+
           {(item.og_description || item.raw_summary) && (
             <p className="text-[13px] text-[#6B6B6B] line-clamp-2 leading-relaxed">
               {item.og_description || item.raw_summary}
@@ -388,7 +440,7 @@ function ArticleCard({ item }: { item: RawItem }) {
               rel="noopener noreferrer"
               className="text-xs text-[#C0392B] hover:underline font-semibold"
             >
-              Read at {sourceName} →
+              Read at {sourceName} {isGoogleNews ? '(via Google News)' : ''} →
             </a>
           </div>
         </div>

@@ -30,6 +30,8 @@ export interface RawItem {
   category?: string;
   embedding?: number[];
   cluster_id?: string;
+  via_google_news?: boolean;
+  english_gloss?: string;
   fetched_at: string;
   // Joined fields
   source?: Source;
@@ -39,6 +41,7 @@ export interface RawItem {
 export interface TopicHub {
   id: string;
   title: string;
+  english_gloss?: string;
   ai_summary?: string;
   first_seen_at: string;
   last_updated_at: string;
@@ -46,5 +49,6 @@ export interface TopicHub {
   mainstream_count?: number;
   grassroots_count?: number;
   discourse_count?: number;
+  via_google_news?: boolean;
   items?: RawItem[];
 }

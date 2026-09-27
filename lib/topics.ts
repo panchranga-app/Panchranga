@@ -6,6 +6,7 @@ export const TOPIC_SECTIONS = [
   'Technology',
   'Sports',
   'Health',
+  'Entertainment',
   'Fact-Check',
   'Discourse & Civic',
   'UP & Bihar',
@@ -14,10 +15,60 @@ export const TOPIC_SECTIONS = [
 ];
 
 export const TOPIC_KEYWORDS: Record<string, string[]> = {
+  'Fact-Check': [
+    'fact check', 'fact-check', 'claim', 'fake news', 'viral video', 'misleading',
+    'debunked', 'दावा', 'फैक्ट चेक', 'अफवाह', 'सत्यता', 'पड़ताल'
+  ],
+  Sports: [
+    'cricket', 'ipl', 'bcci', 'test series', 'test match', 'odi', 't20', 'wicket', 'century',
+    'world cup', 'football', 'fifa', 'hockey', 'olympics', 'medal', 'asian games', 'badminton',
+    'singles final', 'playoffs', 'championship', 'trophy', 'semifinals', 'tournament',
+    'विराट', 'रोहित', 'क्रिकेट', 'सामना', 'खेळ'
+  ],
+  Entertainment: [
+    'movie', 'film', 'cinema', 'actor', 'actress', 'bollywood', 'hollywood', 'tollywood',
+    'box office', 'trailer', 'teaser', 'casting', 'director', 'celebrity', 'ott', 'netflix',
+    'prime video', 'song', 'album', 'singer', 'starring', 'soundtrack', 'cinematography',
+    'दंगल', 'सिनेमा', 'फिल्म', 'अभिनेता', 'अभिनेत्री', 'ट्रेलर', 'गाना'
+  ],
+  'Courts & Law': [
+    'court', 'judge', 'verdict', 'fir', 'police', 'cbi', 'ed',
+    'arrested', 'arrest', 'bail', 'supreme court', 'high court', 'sc hearing', 'cji',
+    'interim bail', 'custody', 'petition', 'judiciary', 'prosecution', 'trial',
+    'न्यायालय', 'कोर्ट', 'न्यायाधीश', 'अटक', 'जामीन', 'सुप्रीम कोर्ट', 'हाईकोर्ट',
+    'हायकोर्ट', 'सर्वोच्च', 'तलवार', 'अपात्र', 'निकाल', 'कोടതി', 'ശിക്ഷ',
+    'తీర్పు', 'కోర్టు', 'நீதிமன்றம்', 'કોર્ટ'
+  ],
+  Health: [
+    'hospital', 'disease', 'doctor', 'health', 'patient', 'virus', 'vaccine', 'medical', 'medicine',
+    'surgery', 'cancer', 'infection', 'epidemic', 'clinic', 'dengue', 'malaria', 'cardiac', 'aiims',
+    'icmr', 'mental health', 'treatment',
+    'अस्पताल', 'डॉक्टर', 'रुग्णालय', 'आरोग्य', 'आशുപത്രി', 'వైద్యులు', 'ఆసుపత్రి'
+  ],
+  Technology: [
+    'technology', 'tech', 'ai', 'artificial intelligence', 'isro', 'space',
+    'satellite', 'cyber', 'software', 'chip', 'semiconductor', 'gadgets',
+    'smartphone', 'google', 'apple', 'microsoft', 'lunar mission', 'cryogenic',
+    'चंद्रयान', 'इसरो', 'तकनीक'
+  ],
+  Economy: [
+    'economy', 'gdp', 'rbi', 'inflation', 'bank', 'banking', 'market', 'sensex', 'nifty',
+    'tax', 'gst', 'rupee', 'budget', 'growth', 'finance', 'stocks', 'trade',
+    'wall street', 'federal reserve', 'interest rate', 'repo rate', 'consumer confidence',
+    'retail spending', 'oil prices', 'real estate', 'property duplex', 'duplex', 'shares',
+    'अर्थव्यवस्था', 'शेयर बाजार', 'बजट', 'आर्थिक', 'बँक', 'महागाई', 'రిజర్వ్ బ్యాంక్'
+  ],
+  Environment: [
+    'flood', 'drought', 'rain', 'monsoon', 'climate', 'pollution', 'river', 'forest', 'water level',
+    'air quality', 'aqi', 'stubble burning', 'smog', 'cyclone',
+    'बाढ़', 'सूखा', 'पाऊस', 'दुष्काळ', 'टंचाई', 'पूर', 'उपशा', 'विहीर', 'पाणी', 'जल', 'पर्यावरण',
+    'വായുമലിനീകരണം', 'മഴ', 'వర్షం'
+  ],
   Politics: [
     // English
-    'election', 'bjp', 'congress', 'modi', 'rahul gandhi',
-    'parliament', 'minister', 'party', 'vote', 'cabinet', 'lok sabha', 'rajya sabha',
+    'election', 'elections', 'bjp', 'congress', 'modi', 'rahul gandhi',
+    'parliament', 'minister', 'party', 'vote', 'voting', 'cabinet', 'lok sabha', 'rajya sabha',
+    'mla', 'mp', 'assembly poll', 'chief minister', 'prime minister',
     // Hindi
     'चुनाव', 'सरकार', 'नेता', 'विधानसभा', 'राजनीति', 'मंत्री', 'संसद', 'भाजपा', 'कांग्रेस', 'पीएम मोदी',
     // Marathi  
@@ -35,42 +86,6 @@ export const TOPIC_KEYWORDS: Record<string, string[]> = {
     'mva', 'nda', 'aap', 'dmk', 'aiadmk',
     'jarange', 'जरांगे', 'काँग्रेस'
   ],
-  'Courts & Law': [
-    'court', 'judge', 'verdict', 'fir', 'police', 'cbi', 'ed',
-    'arrested', 'bail', 'supreme court', 'high court', 'sc hearing', 'cji',
-    'न्यायालय', 'कोर्ट', 'न्यायाधीश', 'अटक', 'जामीन', 'सुप्रीम कोर्ट', 'हाईकोर्ट',
-    'हायकोर्ट', 'सर्वोच्च', 'तलवार', 'अपात्र', 'निकाल', 'कोടതി', 'ശിക്ഷ',
-    'తీర్పు', 'కోర్టు', 'நீதிமன்றம்', 'કોર્ટ'
-  ],
-  Economy: [
-    'economy', 'gdp', 'rbi', 'inflation', 'bank', 'market', 'sensex', 'nifty',
-    'tax', 'rupee', 'budget', 'growth', 'finance', 'chip', 'stocks', 'trade',
-    'अर्थव्यवस्था', 'शेयर बाजार', 'बजट', 'आर्थिक', 'बँक', 'महागाई', 'రిజర్వ్ బ్యాంక్'
-  ],
-  Environment: [
-    'flood', 'drought', 'rain', 'climate', 'pollution', 'river', 'forest', 'monsoon', 'water',
-    'बाढ़', 'सूखा', 'पाऊस', 'दुष्काळ', 'टंचाई', 'पूर', 'उपशा', 'विहीर', 'पाणी', 'जल', 'पर्यावरण',
-    'വായുമലിനീകരണം', 'മഴ', 'వర్షం'
-  ],
-  Technology: [
-    'technology', 'tech', 'ai', 'artificial intelligence', 'isro', 'space',
-    'satellite', 'cyber', 'software', 'chip', 'semiconductor', 'gadgets',
-    'smartphone', 'google', 'apple', 'microsoft', 'चंद्रयान', 'इसरो'
-  ],
-  Sports: [
-    'cricket', 'ipl', 'bcci', 'test match', 'odi', 't20', 'wicket', 'century',
-    'football', 'fifa', 'hockey', 'olympics', 'medal', 'asian games', 'badminton',
-    'विराट', 'रोहित', 'क्रिकेट', 'सामना', 'खेळ'
-  ],
-  Health: [
-    'hospital', 'disease', 'doctor', 'health', 'death', 'dead', 'killed',
-    'accident', 'patient', 'virus', 'vaccine', 'medical', 'medicine',
-    'अस्पताल', 'डॉक्टर', 'मृत्यू', 'रुग्णालय', 'आरोग्य', 'മരണം', 'ആശുപത്രി'
-  ],
-  'Fact-Check': [
-    'fact check', 'fact-check', 'claim', 'fake news', 'viral video', 'misleading',
-    'debunked', 'दावा', 'फैक्ट चेक', 'अफवाह', 'सत्यता', 'पड़ताल'
-  ],
   Maharashtra: [
     'maharashtra', 'mumbai', 'pune', 'nagpur',
     'महाराष्ट्र', 'मुंबई', 'पुणे', 'नागपूर',
@@ -86,9 +101,31 @@ export const TOPIC_KEYWORDS: Record<string, string[]> = {
     'കേരള', 'മലയാള', 'ఆంధ్రప్రదేశ్', 'తెలంగాణ'
   ],
   'UP & Bihar': [
-    'up', 'uttar pradesh', 'bihar', 'lucknow', 'patna', 'varanasi', 'prayagraj', 'kanpur', 'बिहार', 'उत्तर प्रदेश', 'योगी'
+    'uttar pradesh', 'bihar', 'lucknow', 'patna', 'varanasi', 'prayagraj', 'kanpur', 'बिहार', 'उत्तर प्रदेश', 'योगी'
   ],
 };
+
+// Isolated list of short or sensitive English keywords requiring strict word boundary match
+const BOUNDARY_KEYWORDS = new Set([
+  'up', 'ed', 'sc', 'ai', 'rbi', 'gdp', 'bjp', 'aap', 'fir', 'who', 'gst', 't20', 'odi', 'cbi', 'mla', 'mp', 'tech', 'chip', 'tax', 'bank'
+]);
+
+function matchesKeyword(text: string, kw: string): boolean {
+  const kwLower = kw.toLowerCase().trim();
+  // If keyword contains non-ASCII characters (e.g. Devanagari, Telugu, Tamil), use substring check
+  if (/[^\x00-\x7F]/.test(kwLower)) {
+    return text.includes(kwLower);
+  }
+
+  // If keyword is in boundary list or very short (<= 3 chars), strictly enforce word boundary
+  if (BOUNDARY_KEYWORDS.has(kwLower) || kwLower.length <= 3) {
+    const escaped = kwLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    return regex.test(text);
+  }
+
+  return text.includes(kwLower);
+}
 
 export function getRegionFromHub(hub: { title?: string }, sourceRegion?: string): string {
   if (sourceRegion && sourceRegion !== 'national') {
@@ -152,12 +189,34 @@ export function getRegionFromHub(hub: { title?: string }, sourceRegion?: string)
     return 'Bihar';
   }
   if (
+    matchesKeyword(title, 'up') ||
+    title.includes('uttar pradesh') ||
+    title.includes('lucknow') ||
+    title.includes('prayagraj') ||
+    title.includes('varanasi')
+  ) {
+    return 'Uttar Pradesh';
+  }
+  if (
     title.includes('delhi') ||
     title.includes('parliament') ||
     title.includes('supreme court') ||
     title.includes('सर्वोच्च')
   ) {
     return 'New Delhi';
+  }
+
+  // International detection
+  if (
+    title.includes('wall street') ||
+    title.includes('us federal reserve') ||
+    title.includes('united states') ||
+    title.includes('white house') ||
+    title.includes('middle east') ||
+    title.includes('ukraine') ||
+    title.includes('gaza')
+  ) {
+    return 'International';
   }
 
   return 'India';
@@ -182,10 +241,10 @@ export function getCategoryAndRegion(
     return { topic: 'Fact-Check', region: getRegionFromHub({ title }, sourceRegion) };
   }
 
-  // 2. Keyword match
+  // 2. Keyword match in strict priority order
   let topic = 'General';
   for (const [top, kws] of Object.entries(TOPIC_KEYWORDS)) {
-    if (kws.some((kw) => lower.includes(kw.toLowerCase()))) {
+    if (kws.some((kw) => matchesKeyword(lower, kw))) {
       topic = top;
       break;
     }
@@ -199,4 +258,3 @@ export function getCategoryAndRegion(
   const region = getRegionFromHub({ title }, sourceRegion);
   return { topic, region };
 }
-

@@ -16,6 +16,7 @@ import {
 export interface Hub {
   id: string;
   title: string;
+  english_gloss?: string;
   ai_summary: string | null;
   last_updated_at: string;
   og_image?: string | null;
@@ -29,6 +30,7 @@ export interface Hub {
   topic?: string;
   language?: string;
   languages?: string[];
+  via_google_news?: boolean;
 }
 
 export interface FactCheckItem {
@@ -37,6 +39,7 @@ export interface FactCheckItem {
   title: string;
   url: string;
   published_at: string;
+  via_google_news?: boolean;
 }
 
 export const SUPPORTED_LANGUAGES = [
@@ -339,6 +342,32 @@ export default function HomePageClient({
           </div>
         )}
 
+        {/* Above-the-Fold 3-Lane Perspectives Explainer Strip */}
+        <div className="bg-[#FAF9F5] border border-[#E5E5E0] rounded-lg px-4 py-2.5 mb-6 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-[#1A1A1A] bg-[#EAE8E1] px-2 py-0.5 rounded">
+              3-Lane Aggregation
+            </span>
+            <span className="text-[#4A4A4A] hidden md:inline">
+              Every story analyzed across three independent spheres:
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[12px] font-medium flex-wrap">
+            <span className="flex items-center gap-1.5 text-[#1A1A1A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2563EB] shrink-0" />
+              <span>Mainstream Press</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-[#1A1A1A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#16A34A] shrink-0" />
+              <span>Grassroots & Vernacular</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-[#1A1A1A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] shrink-0" />
+              <span>Public Discourse & Civic</span>
+            </span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_300px] gap-[28px]">
           {/* CENTER CONTENT — Hero + Story List (Order 1 on mobile, 2 on desktop) */}
           <main className="order-1 lg:order-2 space-y-6 min-w-0">
@@ -426,13 +455,20 @@ export default function HomePageClient({
                           {hub.title}
                         </h3>
 
-                        {/* Coverage Bar (4px tall) */}
+                        {hub.english_gloss && hub.english_gloss !== hub.title && (
+                          <p className="text-[11px] text-[#6B6B6B] italic font-serif line-clamp-1">
+                            EN: &ldquo;{hub.english_gloss}&rdquo;
+                          </p>
+                        )}
+
+                        {/* Coverage Bar (4px tall) with 3-lane indicator */}
                         <div className="pt-1">
                           <CoverageBar
                             mainstreamCount={hub.mainstream_count}
                             grassrootsCount={hub.grassroots_count}
                             discourseCount={hub.discourse_count}
-                            showLegend={false}
+                            showLegend={true}
+                            showZeroLanes={true}
                           />
                         </div>
                       </div>
@@ -491,13 +527,20 @@ export default function HomePageClient({
                             {hub.title}
                           </h4>
 
-                          {/* 3px Coverage Bar */}
+                          {hub.english_gloss && hub.english_gloss !== hub.title && (
+                            <p className="text-[11px] text-[#6B6B6B] italic font-serif line-clamp-1">
+                              EN: &ldquo;{hub.english_gloss}&rdquo;
+                            </p>
+                          )}
+
+                          {/* 3px Coverage Bar with 3-lane indicator */}
                           <div className="pt-0.5">
                             <CoverageBar
                               mainstreamCount={hub.mainstream_count}
                               grassrootsCount={hub.grassroots_count}
                               discourseCount={hub.discourse_count}
-                              showLegend={false}
+                              showLegend={true}
+                              showZeroLanes={true}
                             />
                           </div>
                         </div>
@@ -515,23 +558,36 @@ export default function HomePageClient({
               </h2>
 
               <div className="divide-y divide-[#E5E5E0]">
-                {factCheckItems.map((item) => (
-                  <div key={`fc-${item.id}`} className="py-3 first:pt-0">
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group block space-y-1"
-                    >
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C0392B] font-bold block">
-                        {item.source_name}
-                      </span>
-                      <h4 className="text-[13px] font-semibold text-[#1A1A1A] leading-snug group-hover:text-[#C0392B] transition-colors">
-                        {item.title}
-                      </h4>
-                    </a>
-                  </div>
-                ))}
+                {factCheckItems.map((item) => {
+                  const isGoogleNews = Boolean(item.via_google_news || (item.url && item.url.includes('news.google.com')));
+                  return (
+                    <div key={`fc-${item.id}`} className="py-3 first:pt-0">
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block space-y-1"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#C0392B] font-bold block">
+                            {item.source_name}
+                          </span>
+                          {isGoogleNews && (
+                            <span
+                              className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] font-medium"
+                              title="Aggregated via Google News redirect"
+                            >
+                              via Google News
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-[13px] font-semibold text-[#1A1A1A] leading-snug group-hover:text-[#C0392B] transition-colors">
+                          {item.title}
+                        </h4>
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -638,6 +694,12 @@ function HeroCard({ hub }: { hub: Hub }) {
             </h1>
           </Link>
 
+          {hub.english_gloss && hub.english_gloss !== hub.title && (
+            <p className="text-sm text-gray-200 italic font-serif">
+              EN: &ldquo;{hub.english_gloss}&rdquo;
+            </p>
+          )}
+
           {hub.ai_summary && (
             <p className="text-xs sm:text-sm text-gray-300 italic line-clamp-2">
               "{hub.ai_summary}"
@@ -649,7 +711,8 @@ function HeroCard({ hub }: { hub: Hub }) {
               mainstreamCount={hub.mainstream_count}
               grassrootsCount={hub.grassroots_count}
               discourseCount={hub.discourse_count}
-              showLegend={false}
+              showLegend={true}
+              showZeroLanes={true}
             />
           </div>
 
@@ -691,36 +754,56 @@ function StoryListItem({ hub }: { hub: Hub }) {
           {hub.language && <LanguageBadge lang={hub.language} />}
         </div>
 
-        {/* Source Name above headline */}
-        <span
-          style={{
-            fontSize: '11px',
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 600,
-            color: '#C0392B',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            display: 'block',
-            marginBottom: '4px',
-          }}
-        >
-          {sourceName}
-        </span>
+        {/* Source Name above headline + Google News pill */}
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span
+            style={{
+              fontSize: '11px',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              color: '#C0392B',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              display: 'inline-block',
+            }}
+          >
+            {sourceName}
+          </span>
+          {hub.via_google_news && (
+            <span
+              className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB] font-medium"
+              title="Aggregated via Google News redirect"
+            >
+              via Google News
+            </span>
+          )}
+        </div>
 
         {/* Headline */}
-        <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group">
+        <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group block">
           <h2 className="font-sans text-[20px] font-bold text-[#1A1A1A] leading-[1.3] group-hover:text-[#C0392B] transition-colors line-clamp-2">
             {hub.title}
           </h2>
+          {hub.english_gloss && hub.english_gloss !== hub.title && (
+            <p className="text-[13px] text-[#6B6B6B] italic font-serif leading-snug flex items-center gap-1.5 mt-1">
+              {hub.language && hub.language !== 'en' && (
+                <span className="not-italic text-[9px] font-mono font-bold uppercase px-1 py-0.5 rounded bg-[#F0EFEB] text-[#4A4A4A] border border-[#DDDCD7]">
+                  {hub.language.toUpperCase()}
+                </span>
+              )}
+              <span>EN: &ldquo;{hub.english_gloss}&rdquo;</span>
+            </p>
+          )}
         </Link>
 
-        {/* Coverage Bar (4px tall) */}
-        <div className="py-0.5">
+        {/* Coverage Bar & 3-Lane Split */}
+        <div className="py-1">
           <CoverageBar
             mainstreamCount={hub.mainstream_count}
             grassrootsCount={hub.grassroots_count}
             discourseCount={hub.discourse_count}
-            showLegend={false}
+            showLegend={true}
+            showZeroLanes={true}
           />
         </div>
 

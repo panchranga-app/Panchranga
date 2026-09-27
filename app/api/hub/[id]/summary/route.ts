@@ -20,9 +20,10 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     return NextResponse.json({ error: 'Hub ID is required' }, { status: 400 });
   }
 
+  let hub: TopicHub | null = null;
+  let items: RawItem[] = [];
+
   try {
-    let hub: TopicHub | null = null;
-    let items: RawItem[] = [];
 
     // 1. Try fetching from Supabase
     if (supabase) {
@@ -77,13 +78,20 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       return NextResponse.json({ error: 'Topic hub not found' }, { status: 404 });
     }
 
+    const cacheHeaders = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+    };
+
     // 3. Cache Hit: Return existing AI summary immediately if already present
     if (hub.ai_summary && hub.ai_summary.trim().length > 10) {
-      return NextResponse.json({
-        summary: hub.ai_summary,
-        isFlagged: false,
-        cached: true,
-      });
+      return NextResponse.json(
+        {
+          summary: hub.ai_summary,
+          isFlagged: false,
+          cached: true,
+        },
+        { headers: cacheHeaders }
+      );
     }
 
     // 4. Cache Miss: Generate AI summary on-demand using the multi-provider cascade
@@ -118,17 +126,31 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       }
     }
 
-    return NextResponse.json({
-      summary: summary || cleanHeadline(hub.title),
-      isFlagged,
-      flagReason,
-      cached: false,
-    });
-  } catch (error: any) {
-    console.error('Fatal error generating on-demand summary:', error);
     return NextResponse.json(
-      { error: error?.message || 'Failed to generate summary' },
-      { status: 500 }
+      {
+        summary: summary || cleanHeadline(hub.title),
+        isFlagged,
+        flagReason,
+        cached: false,
+      },
+      { headers: cacheHeaders }
+    );
+  } catch (error: any) {
+    console.error('Handled error in on-demand summary:', error);
+    // Return early with 200 and fallback title/snippet so client never sees 500 or 504
+    return NextResponse.json(
+      {
+        summary: cleanHeadline(hub?.title || 'Breaking News'),
+        isFlagged: false,
+        cached: false,
+        fallback: true,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        },
+      }
     );
   }
 }

@@ -34,6 +34,8 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
           lane: src?.lane || item.lane || 'mainstream',
           source_name: src?.name || item.source_name || 'Unknown',
           language: src?.language || item.language || 'en',
+          via_google_news: item.via_google_news || (item.url && item.url.includes('news.google.com')),
+          english_gloss: item.english_gloss,
           sources: src,
           source: src,
         };
@@ -48,6 +50,8 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
               ...item,
               lane: src?.lane || item.lane || 'mainstream',
               source_name: src?.name || item.source_name || 'Unknown',
+              via_google_news: item.via_google_news || (item.url && item.url.includes('news.google.com')),
+              english_gloss: item.english_gloss,
               sources: src,
               source: src,
             };
@@ -126,6 +130,8 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
             lane: src?.lane || item.lane || 'mainstream',
             source_name: src?.name || item.source_name || 'Unknown',
             language: src?.language || item.language || 'en',
+            via_google_news: item.via_google_news || (item.url && item.url.includes('news.google.com')),
+            english_gloss: item.english_gloss,
             sources: src,
             source: src,
           };
@@ -250,9 +256,19 @@ export default async function HomePage({
 
     const { topic, region } = getCategoryAndRegion(hub.title ?? '', sourceRegion);
 
+    const isGoogleNews = Boolean(
+      hub.via_google_news ||
+      items.some((i) => i.via_google_news || (i.url && i.url.includes('news.google.com')))
+    );
+
+    const englishGloss =
+      hub.english_gloss ||
+      items.find((i) => i.english_gloss)?.english_gloss;
+
     return {
       id: hub.id,
       title: hub.title ?? 'Untitled Topic Hub',
+      english_gloss: englishGloss,
       ai_summary: hub.ai_summary ?? null,
       last_updated_at: hub.last_updated_at ?? hub.first_seen_at ?? new Date().toISOString(),
       og_image: firstOgItem?.og_image ?? null,
@@ -265,6 +281,7 @@ export default async function HomePage({
       region,
       language: sourceLang,
       languages: allLangs,
+      via_google_news: isGoogleNews,
       sources: items[0]?.sources || items[0]?.source || { name: firstSource, region: sourceRegion, language: sourceLang },
     };
   });
@@ -294,6 +311,7 @@ export default async function HomePage({
       title: item.title,
       url: item.url,
       published_at: item.published_at,
+      via_google_news: Boolean(item.via_google_news || (item.url && item.url.includes('news.google.com'))),
     }));
 
   // Fallback sample fact check items if none in rawItems

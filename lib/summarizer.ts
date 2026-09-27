@@ -98,21 +98,50 @@ export async function generateNeutralSummary(hub: TopicHub): Promise<SummaryResu
     return { summary: defaultFallback, isFlagged: false };
   }
 
+  // Select up to 8 representative items prioritizing diverse lanes and sources
+  let selectedItems = items;
+  if (items.length > 25) {
+    const mainstream = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'mainstream');
+    const grassroots = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'grassroots');
+    const discourse = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'discourse');
+
+    const picked: typeof items = [];
+    picked.push(...mainstream.slice(0, 3));
+    picked.push(...grassroots.slice(0, 3));
+    picked.push(...discourse.slice(0, 2));
+
+    const pickedUrls = new Set(picked.map((p) => p.id || p.url));
+    for (const it of items) {
+      if (picked.length >= 8) break;
+      if (!pickedUrls.has(it.id || it.url)) {
+        picked.push(it);
+        pickedUrls.add(it.id || it.url);
+      }
+    }
+    selectedItems = picked;
+  } else if (items.length > 8) {
+    selectedItems = items.slice(0, 8);
+  }
+
   // Build concise context for the LLM
-  const headlines = items.slice(0, 5).map((i) => {
+  const headlines = selectedItems.map((i) => {
     const title = cleanHeadline(i.title);
     const snippet = i.raw_summary ? cleanSummary(i.raw_summary).slice(0, 100) : '';
     return snippet ? `- ${title} (Context: ${snippet})` : `- ${title}`;
   });
 
-  // Extract real article text from primary source webpage
+  // Extract real article text from primary source webpage (capped at 2500ms timeout)
   let fullArticleText: string | null = null;
   if (items[0]?.url) {
     try {
-      fullArticleText = await extractArticleText(items[0].url, 3000);
+      const textPromise = extractArticleText(items[0].url, 2500);
+      const timeoutPromise = new Promise<string | null>((resolve) =>
+        setTimeout(() => resolve(null), 2500)
+      );
+      fullArticleText = await Promise.race([textPromise, timeoutPromise]);
     } catch {}
   }
-  const articleExcerpt = fullArticleText ? `\nKey Excerpt from Primary Report:\n${fullArticleText.slice(0, 1200)}\n` : '';
+  const articleExcerpt = fullArticleText ? `\nKey Excerpt from Primary Report:\n${fullArticleText.slice(0, 1000)}\n` : '';
 
   const groqKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -141,7 +170,7 @@ Neutral briefing:`;
       .trim();
   };
 
-  // 1. Try Groq (Ultra-fast inference)
+  // 1. Try Groq (Ultra-fast inference, 4500ms timeout)
   if (groqKey && Date.now() > groqCooldownUntil) {
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -165,6 +194,7 @@ Neutral briefing:`;
           max_tokens: 75,
           temperature: 0.2,
         }),
+        signal: AbortSignal.timeout(4500),
       });
 
       if (response.ok) {
@@ -184,11 +214,11 @@ Neutral briefing:`;
         }
       }
     } catch (e) {
-      console.warn('⚠️ Groq API summary call failed, falling back...', e);
+      console.warn('⚠️ Groq API summary call failed or timed out, falling back...', e);
     }
   }
 
-  // 2. Try Google Gemini Flash (Generous daily quota: 1,500 req/day, 1M TPM)
+  // 2. Try Google Gemini Flash (4500ms timeout)
   if (geminiKey && Date.now() > geminiCooldownUntil) {
     try {
       const geminiModel = 'gemini-3.8-flash';
@@ -201,6 +231,7 @@ Neutral briefing:`;
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens: 300, temperature: 0.2 },
           }),
+          signal: AbortSignal.timeout(4500),
         }
       );
 
@@ -218,11 +249,11 @@ Neutral briefing:`;
         }
       }
     } catch (e) {
-      console.warn('⚠️ Gemini API summary call failed, falling back to OpenRouter...', e);
+      console.warn('⚠️ Gemini API summary call failed or timed out, falling back to OpenRouter...', e);
     }
   }
 
-  // 3. Try OpenRouter (Multi-model free tier fallback)
+  // 3. Try OpenRouter (Multi-model free tier fallback, 4500ms timeout)
   if (openrouterKey && Date.now() > openRouterCooldownUntil) {
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -253,6 +284,7 @@ Neutral briefing:`;
           max_tokens: 150,
           temperature: 0.2,
         }),
+        signal: AbortSignal.timeout(4500),
       });
 
       if (response.ok) {
@@ -272,7 +304,7 @@ Neutral briefing:`;
         }
       }
     } catch (e) {
-      console.warn('⚠️ OpenRouter API call failed, falling back to rule-based...', e);
+      console.warn('⚠️ OpenRouter API call failed or timed out, falling back to rule-based...', e);
     }
   }
 

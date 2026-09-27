@@ -136,6 +136,7 @@ export async function fetchGoogleNewsAggregator(
           published_at: item.isoDate || item.pubDate || new Date().toISOString(),
           raw_summary: rawSummary,
           category: topic,
+          via_google_news: true,
           fetched_at: new Date().toISOString(),
         };
       }).filter((it: IngestedItem) => it.url.startsWith('http') && it.title.length > 5);
