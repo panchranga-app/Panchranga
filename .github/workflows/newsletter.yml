@@ -1,18 +1,55 @@
-name: Daily Newsletter
+name: Panchranga Daily 7:00 AM IST Newsletter
 
 on:
   schedule:
-    # 7:00 AM IST = 1:30 AM UTC
+    # 7:00 AM IST = 1:30 AM UTC daily
     - cron: '30 1 * * *'
-  workflow_dispatch: # allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (prints planned provider split and counts, sends nothing)'
+        required: false
+        default: 'false'
+        type: string
+
+concurrency:
+  group: panchranga-newsletter
+  cancel-in-progress: false
 
 jobs:
   send-newsletter:
     runs-on: ubuntu-latest
     steps:
-      - name: Send daily newsletter
-        run: |
-          curl -f -X POST \
-            -H "Authorization: Bearer ${{ secrets.NEWSLETTER_SECRET_KEY }}" \
-            -H "Content-Type: application/json" \
-            https://panchranga.vercel.app/api/newsletter/send
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Send Daily Newsletter
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app' }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_DAILY_LIMIT: ${{ secrets.GMAIL_DAILY_LIMIT }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+          BREVO_DAILY_LIMIT: ${{ secrets.BREVO_DAILY_LIMIT }}
+          BREVO_ENABLED: ${{ secrets.BREVO_ENABLED }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_DAILY_LIMIT: ${{ secrets.RESEND_DAILY_LIMIT }}
+          EMAIL_PROVIDER_ORDER: ${{ secrets.EMAIL_PROVIDER_ORDER }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          TEST_RECIPIENTS: ${{ secrets.TEST_RECIPIENTS }}
+        run: npm run send-newsletter

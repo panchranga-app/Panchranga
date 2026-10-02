@@ -86,3 +86,42 @@ export async function GET(req: Request) {
     headers: { 'Content-Type': 'text/html; charset=utf-8' }
   });
 }
+
+export async function POST(req: Request) {
+  const { searchParams } = new URL(req.url);
+  let token = searchParams.get('token');
+
+  if (!token) {
+    try {
+      const body = await req.json();
+      token = body?.token;
+    } catch {
+      // Body may not be JSON
+    }
+  }
+
+  if (!token) {
+    return new Response('Invalid unsubscribe link', { status: 400 });
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    return new Response('Database credentials not configured', { status: 500 });
+  }
+
+  const { error } = await supabase
+    .from('newsletter_subscribers')
+    .update({ is_active: false })
+    .eq('unsubscribe_token', token);
+
+  if (error) {
+    console.error('Unsubscribe error:', error);
+    return new Response('Something went wrong', { status: 500 });
+  }
+
+  return new Response('Unsubscribed successfully', {
+    status: 200,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
+}
+
