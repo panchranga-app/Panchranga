@@ -69,10 +69,24 @@ export async function sendDailyNewsletter(
 
   if (isTestMode && testRecipientsRaw) {
     console.log(`[NEWSLETTER] TEST_RECIPIENTS mode enabled: Sending ONLY to ${testRecipientsRaw.length} test address(es).`);
-    subscribers = testRecipientsRaw.map((email) => ({
-      email,
-      unsubscribeToken: 'test-token',
-    }));
+    const { data: dbMatches } = await supabase
+      .from('newsletter_subscribers')
+      .select('id, email, unsubscribe_token')
+      .in('email', testRecipientsRaw);
+
+    const matchMap = new Map<string, { id?: string; unsubscribe_token?: string }>();
+    dbMatches?.forEach((m: any) => {
+      if (m.email) matchMap.set(m.email.toLowerCase(), m);
+    });
+
+    subscribers = testRecipientsRaw.map((email) => {
+      const match = matchMap.get(email.toLowerCase());
+      return {
+        id: match?.id,
+        email,
+        unsubscribeToken: match?.unsubscribe_token || 'test-token',
+      };
+    });
   } else {
     // Read active subscribers ordered by last_sent_at ascending (nulls first) to prioritize deferred subscribers
     console.log('[NEWSLETTER] Fetching active subscribers from Supabase...');
