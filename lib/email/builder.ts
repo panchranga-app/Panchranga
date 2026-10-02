@@ -491,3 +491,123 @@ export function buildWelcomeEmailHTML(
   `;
 }
 
+/**
+ * Builds the Unsubscribe Confirmation Email HTML template.
+ */
+export function buildUnsubscribeConfirmationEmailHTML(
+  siteUrl: string = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app'
+): string {
+  const baseSiteUrl = siteUrl.replace(/\/+$/, '');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <body style="
+      font-family: Inter, Arial, sans-serif;
+      background: #F5F5F3;
+      margin: 0;
+      padding: 24px;
+    ">
+      <table 
+        width="600" 
+        style="
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+        "
+      >
+        <tr>
+          <td style="
+            background: #1A1A1A;
+            padding: 24px 32px;
+          ">
+            <!-- FIVE BRAND COLOR DOTS LOGO -->
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 12px;">
+              <tr>
+                <td style="padding: 0; line-height: 0; font-size: 0;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #4A56E2;"></span></td>
+                <td style="width: 8px; padding: 0; line-height: 0; font-size: 0;">&nbsp;</td>
+                <td style="padding: 0; line-height: 0; font-size: 0;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #00B8A9;"></span></td>
+                <td style="width: 8px; padding: 0; line-height: 0; font-size: 0;">&nbsp;</td>
+                <td style="padding: 0; line-height: 0; font-size: 0;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #F5A623;"></span></td>
+                <td style="width: 8px; padding: 0; line-height: 0; font-size: 0;">&nbsp;</td>
+                <td style="padding: 0; line-height: 0; font-size: 0;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #E84393;"></span></td>
+                <td style="width: 8px; padding: 0; line-height: 0; font-size: 0;">&nbsp;</td>
+                <td style="padding: 0; line-height: 0; font-size: 0;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #FF6B6B;"></span></td>
+              </tr>
+            </table>
+            <span style="
+              font-family: Georgia, serif;
+              font-size: 24px;
+              font-weight: 800;
+              color: white;
+            ">
+              Panchranga
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 32px;">
+            <h1 style="
+              font-family: Georgia, serif;
+              font-size: 24px;
+              color: #1A1A1A;
+              margin: 0 0 16px 0;
+            ">
+              We're sorry to see you go.
+            </h1>
+            <p style="
+              font-size: 15px;
+              color: #4A4A4A;
+              line-height: 1.7;
+              margin: 0 0 16px 0;
+            ">
+              This email confirms that you've been successfully unsubscribed from the Panchranga Daily newsletter. You will no longer receive daily editions at this address.
+            </p>
+            <p style="
+              font-size: 14px;
+              color: #6B7280;
+              line-height: 1.6;
+              margin: 0 0 24px 0;
+            ">
+              If this was done in error or you change your mind, you can resubscribe anytime on our website.
+            </p>
+            <a 
+              href="${baseSiteUrl}"
+              style="
+                display: inline-block;
+                padding: 12px 24px;
+                background: #1A1A1A;
+                color: white;
+                font-size: 14px;
+                font-weight: 600;
+                text-decoration: none;
+                border-radius: 4px;
+              "
+            >
+              Back to Panchranga →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="
+            padding: 16px 32px;
+            border-top: 1px solid #E5E5E0;
+          ">
+            <p style="
+              font-size: 12px;
+              color: #9CA3AF;
+              margin: 0;
+            ">
+              Panchranga · Every color of the story · Open source · No editors · No paywalls
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+
