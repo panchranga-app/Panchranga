@@ -2,12 +2,17 @@ import assert from 'assert';
 import {
   buildComplianceHeaders,
   buildEmailHTML,
+  deduplicateNewsletterHubs,
   formatHubStories,
   formatIstDate,
   getDailyLimits,
   getStartOfCurrentIstDayUtc,
   maskEmail,
+  sendDailyNewsletter,
 } from '../../lib/email';
+
+
+
 import { GmailSmtpProvider } from '../../lib/email/providers/gmail';
 import { BrevoProvider } from '../../lib/email/providers/brevo';
 import { ResendProvider } from '../../lib/email/providers/resend';
@@ -284,7 +289,124 @@ async function runTests() {
     assert.strictEqual(isPermanent, true);
   });
 
+  // 9. Topic Hub Deduplication & 0-Source Exclusion Tests
+  test('deduplicateNewsletterHubs: filters 0-source ghost hubs and duplicate stories', () => {
+    const candidateHubs = [
+      {
+        id: 'hub-duplicate-1',
+        title: 'PM Modi speaks to Capt Smit Machchhar, applauds his bravery',
+        raw_items: [
+          { url: 'https://news.com/modi-smit-1', sources: { name: 'Hindustan Times' } },
+          { url: 'https://news.com/modi-smit-2', sources: { name: 'India Today' } },
+        ],
+      },
+      {
+        id: 'hub-ghost-zero-items',
+        title: 'PM Modi speaks to Capt Smit Machchhar, applauds his bravery',
+        raw_items: [], // 0 sources - must be skipped!
+      },
+      {
+        id: 'hub-duplicate-2',
+        title: 'PM Modi speaks to Capt Smit Machchhar, applauds his bravery',
+        raw_items: [
+          { url: 'https://news.com/modi-smit-3', sources: { name: 'NDTV' } },
+        ],
+      },
+      {
+        id: 'hub-similar-title',
+        title: 'PM Modi speaks to pilot Smit Machchhar, praises bravery in cockpit ordeal',
+        raw_items: [
+          { url: 'https://news.com/modi-smit-4', sources: { name: 'Times of India' } },
+        ],
+      },
+      {
+        id: 'hub-story-2',
+        title: 'Odisha rape accused injured in police encounter after firing at cops',
+        raw_items: [
+          { url: 'https://news.com/odisha-1', sources: { name: 'News18' } },
+          { url: 'https://news.com/odisha-2', sources: { name: 'The Hindu' } },
+        ],
+      },
+      {
+        id: 'hub-story-3',
+        title: 'ISRO successfully launches navigation satellite from Sriharikota',
+        raw_items: [
+          { url: 'https://news.com/isro-1', sources: { name: 'Deccan Herald' } },
+        ],
+      },
+      {
+        id: 'hub-overlapping-url',
+        title: 'Different headline for space launch',
+        raw_items: [
+          { url: 'https://news.com/isro-1', sources: { name: 'Deccan Herald' } }, // overlaps with story 3
+        ],
+      },
+    ];
+
+    const selected = deduplicateNewsletterHubs(candidateHubs, 3);
+
+    // Must return exactly 3 stories
+    assert.strictEqual(selected.length, 3);
+
+    // Story 1: Smit Machchhar
+    assert.strictEqual(selected[0].id, 'hub-duplicate-1');
+    assert.strictEqual(selected[0].raw_items.length, 2);
+
+    // Story 2: Odisha police encounter (not another Smit Machchhar duplicate!)
+    assert.strictEqual(selected[1].id, 'hub-story-2');
+    assert.strictEqual(selected[1].title, 'Odisha rape accused injured in police encounter after firing at cops');
+
+    // Story 3: ISRO launch (not overlapping URL or ghost)
+    assert.strictEqual(selected[2].id, 'hub-story-3');
+    assert.strictEqual(selected[2].title, 'ISRO successfully launches navigation satellite from Sriharikota');
+
+    // Verify all 3 titles are completely distinct
+    const titles = selected.map((h) => h.title);
+    assert.strictEqual(new Set(titles).size, 3);
+  });
+
+  // 10. Idempotency Guard Tests
+  await testAsync('sendDailyNewsletter: blocks duplicate sends within same IST calendar day', async () => {
+    const mockSupabaseWithAlreadySent: any = {
+      from(table: string) {
+        if (table === 'newsletter_sends') {
+          return {
+            select() {
+              return {
+                gte() {
+                  return {
+                    in() {
+                      return {
+                        limit() {
+                          return Promise.resolve({
+                            data: [{ id: 'send-1', sent_at: new Date().toISOString(), subscriber_count: 5 }],
+                            error: null,
+                          });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        return {};
+      },
+    };
+
+    const res = await sendDailyNewsletter({
+      supabase: mockSupabaseWithAlreadySent,
+      dryRun: false,
+      force: false,
+    });
+
+    assert.strictEqual(res.message, 'Daily newsletter was already sent today');
+    assert.strictEqual(res.sent, 0);
+  });
+
   console.log(`\n🎉 All ${passed}/${total} tests passed successfully!`);
+
 }
 
 runTests().catch((e) => {

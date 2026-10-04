@@ -1,4 +1,5 @@
 import { HubStory } from './types';
+import { normalizeTitle, wordJaccardSimilarity } from '../dedup';
 
 /**
  * Builds the newsletter HTML email.
@@ -286,13 +287,67 @@ export function buildEmailHTML(
 }
 
 /**
- * Fetches the top 3 topic hubs from the last 24 hours (with fallback to latest 3).
+ * Deduplicates and selects top distinct topic hubs for the newsletter:
+ * 1. Skips hubs with 0 linked articles.
+ * 2. Deduplicates against already selected hubs using normalized title match & word Jaccard similarity.
+ * 3. Prevents overlapping story coverage by checking article URLs.
+ */
+export function deduplicateNewsletterHubs(hubs: any[], maxCount = 3): any[] {
+  const selected: any[] = [];
+  const selectedTitles: string[] = [];
+  const selectedUrls = new Set<string>();
+
+  for (const hub of hubs) {
+    if (selected.length >= maxCount) break;
+
+    const rawItems = (hub.raw_items as any[]) || [];
+    // Must have at least 1 linked article to feature in newsletter
+    if (rawItems.length === 0) continue;
+
+    const currentTitle = (hub.title || '').trim();
+    if (!currentTitle) continue;
+
+    const currentNorm = normalizeTitle(currentTitle);
+
+    // 1. Check title similarity against already selected hubs
+    let isDuplicate = false;
+    for (const prevTitle of selectedTitles) {
+      const prevNorm = normalizeTitle(prevTitle);
+      if (currentNorm === prevNorm) {
+        isDuplicate = true;
+        break;
+      }
+      const similarity = wordJaccardSimilarity(currentNorm, prevNorm);
+      if (similarity >= 0.35) {
+        isDuplicate = true;
+        break;
+      }
+    }
+
+    if (isDuplicate) continue;
+
+    // 2. Check for overlapping article URLs across hubs
+    const hubUrls = rawItems.map((r: any) => r.url).filter(Boolean);
+    const hasOverlappingUrl = hubUrls.some((u: string) => selectedUrls.has(u));
+    if (hasOverlappingUrl) continue;
+
+    selected.push(hub);
+    selectedTitles.push(currentTitle);
+    hubUrls.forEach((u: string) => selectedUrls.add(u));
+  }
+
+  return selected;
+}
+
+/**
+ * Fetches the top 3 topic hubs from the last 24-48 hours, guaranteed distinct and multi-source.
  */
 export async function fetchTopNewsletterHubs(supabase: any): Promise<any[]> {
-  const yesterday = new Date();
-  yesterday.setHours(yesterday.getHours() - 24);
+  const timeWindow = new Date();
+  timeWindow.setHours(timeWindow.getHours() - 48);
 
-  let { data: hubs } = await supabase
+  // Fetch candidate pool of hubs ordered by item_count
+  const { data: candidates } = await supabase
     .from('topic_hubs')
     .select(`
       id,
@@ -306,13 +361,15 @@ export async function fetchTopNewsletterHubs(supabase: any): Promise<any[]> {
         sources (name, lane)
       )
     `)
-    .gte('last_updated_at', yesterday.toISOString())
+    .gte('last_updated_at', timeWindow.toISOString())
     .order('item_count', { ascending: false })
-    .limit(3);
+    .limit(30);
 
-  // Fallback if no hubs in last 24 hours
-  if (!hubs || hubs.length === 0) {
-    const fallback = await supabase
+  let selected = deduplicateNewsletterHubs(candidates || [], 3);
+
+  // Fallback if fewer than 3 distinct hubs found in primary time window
+  if (selected.length < 3) {
+    const { data: fallbackCandidates } = await supabase
       .from('topic_hubs')
       .select(`
         id,
@@ -327,12 +384,15 @@ export async function fetchTopNewsletterHubs(supabase: any): Promise<any[]> {
         )
       `)
       .order('last_updated_at', { ascending: false })
-      .limit(3);
-    hubs = fallback.data || [];
+      .limit(50);
+
+    const mergedCandidates = [...(candidates || []), ...(fallbackCandidates || [])];
+    selected = deduplicateNewsletterHubs(mergedCandidates, 3);
   }
 
-  return hubs || [];
+  return selected;
 }
+
 
 /**
  * Transforms raw Supabase hubs into HubStory objects for the email template.

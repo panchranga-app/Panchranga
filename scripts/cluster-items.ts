@@ -169,19 +169,36 @@ async function runClustering() {
       );
     await Promise.all(updatePromises);
 
-    // Clean up orphaned hubs in topic_hubs that have 0 raw_items
-    const { data: allLinkedItems } = await supabase.from('raw_items').select('cluster_id').not('cluster_id', 'is', null).limit(10000);
-    if (allLinkedItems) {
-      const activeClusterIds = new Set(allLinkedItems.map((i) => i.cluster_id));
-      const { data: currentHubs } = await supabase.from('topic_hubs').select('id');
-      if (currentHubs) {
-        const orphanIds = currentHubs.filter((h) => !activeClusterIds.has(h.id)).map((h) => h.id);
-        if (orphanIds.length > 0) {
-          await supabase.from('topic_hubs').delete().in('id', orphanIds);
-          console.log(`🧹 Cleaned up ${orphanIds.length} orphaned topic hubs from database.`);
+    // Clean up superseded/orphaned topic hubs from previous runs
+    // All items in the 48h window were reclustered into currentRunHubIds; earlier hubs in this window are superseded
+    const currentRunHubIds = new Set(hubs.map((h) => h.id));
+    const { data: recentDbHubs } = await supabase
+      .from('topic_hubs')
+      .select('id')
+      .gte('last_updated_at', cutoffDate);
+
+    if (recentDbHubs && recentDbHubs.length > 0) {
+      const orphanIds = recentDbHubs
+        .filter((h) => !currentRunHubIds.has(h.id))
+        .map((h) => h.id);
+
+      if (orphanIds.length > 0) {
+        console.log(`🧹 Found ${orphanIds.length} superseded topic hubs to clean up...`);
+        let deletedCount = 0;
+        const deleteBatchSize = 50;
+        for (let i = 0; i < orphanIds.length; i += deleteBatchSize) {
+          const batch = orphanIds.slice(i, i + deleteBatchSize);
+          const { error: delErr } = await supabase.from('topic_hubs').delete().in('id', batch);
+          if (delErr) {
+            console.warn(`⚠️ Error deleting topic hubs batch [${i}-${i + batch.length}]:`, delErr.message);
+          } else {
+            deletedCount += batch.length;
+          }
         }
+        console.log(`🧹 Cleaned up ${deletedCount}/${orphanIds.length} superseded topic hubs from database.`);
       }
     }
+
 
     console.log('✅ Supabase database sync complete.');
   }

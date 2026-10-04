@@ -5,12 +5,47 @@ export const dynamic = 'force-dynamic';
 
 function validateRequest(req: Request) {
   const authHeader = req.headers.get('authorization');
-  const expectedKey = process.env.NEWSLETTER_SECRET_KEY;
+  const expectedKey = process.env.NEWSLETTER_SECRET_KEY || process.env.CRON_SECRET;
   if (!expectedKey) return false;
   return authHeader === `Bearer ${expectedKey}`;
 }
 
+export async function GET(req: Request) {
+  if (!validateRequest(req)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' }, 
+      { status: 401 }
+    );
+  }
+
+  const url = new URL(req.url);
+  const dryRun = url.searchParams.get('dryRun') === 'true';
+
+  try {
+    const result = await sendDailyNewsletter({
+      dryRun,
+    });
+
+    return NextResponse.json({
+      message: result.message,
+      sent: result.sent,
+      failed: result.failed,
+      deferred: result.deferred,
+      providerCounts: result.providerCounts,
+      stories: result.storiesCount,
+      dryRun: result.dryRun,
+    });
+  } catch (error: any) {
+    console.error('[API] Newsletter send error:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Failed to send newsletter' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
+
   if (!validateRequest(req)) {
     return NextResponse.json(
       { error: 'Unauthorized' }, 

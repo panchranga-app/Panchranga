@@ -46,8 +46,10 @@ export interface HubStory {
 export interface DailyNewsletterOptions {
   dryRun?: boolean;
   testRecipients?: string[];
+  force?: boolean;
   supabase?: any;
 }
+
 
 export interface DailyNewsletterResult {
   message: string;

@@ -6,7 +6,7 @@ import {
 } from './builder';
 import { dispatchNewsletter, sendTransactionalEmail } from './dispatcher';
 import { DailyNewsletterOptions, DailyNewsletterResult, EmailRecipient } from './types';
-import { buildComplianceHeaders, formatIstDate, maskEmail } from './utils';
+import { buildComplianceHeaders, formatIstDate, getStartOfCurrentIstDayUtc, maskEmail } from './utils';
 
 export function getSupabaseServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -34,6 +34,8 @@ export async function sendDailyNewsletter(
     options.dryRun ??
     (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
 
+  const force = options.force ?? (process.env.FORCE_SEND === 'true' || process.env.FORCE_SEND === '1');
+
   // Check TEST_RECIPIENTS
   const testRecipientsRaw =
     options.testRecipients ||
@@ -43,7 +45,35 @@ export async function sendDailyNewsletter(
 
   const isTestMode = Boolean(testRecipientsRaw && testRecipientsRaw.length > 0);
 
+  // Idempotency Guard: Ensure only one daily newsletter is sent per IST calendar day
+  // Protects against duplicate runs (e.g. delayed GitHub Actions cron runs, duplicate triggers)
+  if (!isTestMode && !dryRun && !force) {
+    const todayStartUtc = getStartOfCurrentIstDayUtc(new Date());
+    const { data: alreadySent } = await supabase
+      .from('newsletter_sends')
+      .select('id, sent_at, subscriber_count')
+      .gte('sent_at', todayStartUtc.toISOString())
+      .in('status', ['sent', 'partial'])
+      .limit(1);
+
+    if (alreadySent && alreadySent.length > 0) {
+      console.log(
+        `[NEWSLETTER] Today's daily edition was already sent at ${alreadySent[0].sent_at} (${alreadySent[0].subscriber_count} sent). Skipping to prevent duplicate delivery.`
+      );
+      return {
+        message: 'Daily newsletter was already sent today',
+        sent: 0,
+        failed: 0,
+        deferred: 0,
+        providerCounts: {},
+        storiesCount: 0,
+        dryRun: false,
+      };
+    }
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
+
 
   // Step 1: Fetch Top 3 Hubs
   console.log('[NEWSLETTER] Fetching top 3 hubs for today...');
@@ -110,10 +140,19 @@ export async function sendDailyNewsletter(
       dbSubs = fallback.data;
     }
 
-    if (!dbSubs || dbSubs.length === 0) {
-      console.log('[NEWSLETTER] No active subscribers found.');
+    // Filter out subscribers who already received an edition today (unless force=true)
+    const todayStartUtc = getStartOfCurrentIstDayUtc(new Date());
+    const eligibleSubs = force
+      ? (dbSubs || [])
+      : (dbSubs || []).filter((s: any) => {
+          if (!s.last_sent_at) return true;
+          return new Date(s.last_sent_at) < todayStartUtc;
+        });
+
+    if (!eligibleSubs || eligibleSubs.length === 0) {
+      console.log('[NEWSLETTER] No active subscribers due for delivery today (all already received today\'s edition).');
       return {
-        message: 'No active subscribers found',
+        message: 'All subscribers have already received today’s edition',
         sent: 0,
         failed: 0,
         deferred: 0,
@@ -123,12 +162,13 @@ export async function sendDailyNewsletter(
       };
     }
 
-    subscribers = dbSubs.map((s: any) => ({
+    subscribers = eligibleSubs.map((s: any) => ({
       id: s.id,
       email: s.email,
       unsubscribeToken: s.unsubscribe_token,
     }));
   }
+
 
   // Step 3: Message builder closure for each subscriber
   const buildMessageForRecipient = (sub: EmailRecipient) => {

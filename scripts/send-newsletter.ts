@@ -27,6 +27,10 @@ async function run() {
     process.env.DRY_RUN === 'true' ||
     process.env.DRY_RUN === '1';
 
+  const force =
+    process.env.FORCE_SEND === 'true' ||
+    process.env.FORCE_SEND === '1';
+
   const testRecipientsRaw = process.env.TEST_RECIPIENTS;
   const testRecipients = testRecipientsRaw
     ? testRecipientsRaw.split(',').map((e) => e.trim()).filter(Boolean)
@@ -36,8 +40,10 @@ async function run() {
     const result = await sendDailyNewsletter({
       supabase,
       dryRun,
+      force,
       testRecipients,
     });
+
 
     console.log(`[RESULT] ${result.message}`);
     console.log(`[RESULT] Stories: ${result.storiesCount} | Sent: ${result.sent} | Deferred: ${result.deferred} | Failed: ${result.failed}`);
