@@ -5,6 +5,7 @@ import { TopicHub, RawItem } from '@/lib/types';
 import HomePageClient, { Hub, FactCheckItem } from '@/components/HomePageClient';
 import PanchrangaLoader from '@/components/PanchrangaLoader';
 import { getCategoryAndRegion } from '@/lib/topics';
+import { resolveHubTimestamps } from '@/lib/utils';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -79,48 +80,75 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
     }
   };
 
-  // 1. Try querying Supabase Postgres if configured (with a 6-second timeout)
+  // 1. Try querying Supabase Postgres if configured (with a 12-second timeout)
   if (supabase) {
     try {
-      const fetchSupabase = Promise.all([
-        supabase
+      const sbClient = supabase;
+      const fetchFromSupabase = async () => {
+        const { data: dbHubs, error: hubsErr } = await sbClient
           .from('topic_hubs')
           .select('id, title, ai_summary, first_seen_at, last_updated_at, item_count')
           .order('last_updated_at', { ascending: false })
-          .limit(300),
-        supabase
-          .from('raw_items')
-          .select(`
-            id,
-            title,
-            url,
-            published_at,
-            og_image,
-            og_description,
-            raw_summary,
-            cluster_id,
-            fetched_at,
-            sources:source_id (
-              id,
-              name,
-              lane,
-              type,
-              language,
-              region
-            )
-          `)
-          .order('published_at', { ascending: false })
-          .limit(1000),
-      ]);
+          .limit(200);
 
-      const timeoutPromise = new Promise<{ data: null }[]>((_, reject) =>
-        setTimeout(() => reject(new Error('Supabase query timed out')), 6000)
+        if (hubsErr || !dbHubs || dbHubs.length === 0) {
+          return { dbHubs: null, dbItems: null };
+        }
+
+        const hubIds = dbHubs.map((h: any) => h.id);
+        const itemSelect = `
+          id,
+          title,
+          url,
+          published_at,
+          og_image,
+          og_description,
+          raw_summary,
+          cluster_id,
+          fetched_at,
+          sources:source_id (
+            id,
+            name,
+            lane,
+            type,
+            language,
+            region
+          )
+        `;
+
+        // Fetch items matching the top hub IDs using the indexed cluster_id column in parallel chunks
+        const chunkPromises = [];
+        for (let i = 0; i < hubIds.length; i += 100) {
+          const chunk = hubIds.slice(i, i + 100);
+          chunkPromises.push(
+            sbClient
+              .from('raw_items')
+              .select(itemSelect)
+              .in('cluster_id', chunk)
+          );
+        }
+
+        const chunkResults = await Promise.all(chunkPromises);
+        const dbItems = chunkResults.flatMap((res) => res.data || []);
+
+        // Fallback if cluster_id lookup yielded 0 items (e.g. unclustered raw_items)
+        if (dbItems.length === 0) {
+          const { data: recentItems } = await sbClient
+            .from('raw_items')
+            .select(itemSelect)
+            .order('published_at', { ascending: false })
+            .limit(400);
+          return { dbHubs, dbItems: recentItems || [] };
+        }
+
+        return { dbHubs, dbItems };
+      };
+
+      const timeoutPromise = new Promise<{ dbHubs: null; dbItems: null }>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase query timed out')), 12000)
       );
 
-      const [hubsRes, itemsRes] = (await Promise.race([fetchSupabase, timeoutPromise])) as any[];
-
-      const dbHubs = hubsRes?.data;
-      const dbItems = itemsRes?.data;
+      const { dbHubs, dbItems } = await Promise.race([fetchFromSupabase(), timeoutPromise]);
 
       if (dbHubs && dbHubs.length > 0 && dbItems && dbItems.length > 0) {
         const normalizedDbItems: RawItem[] = dbItems.map((item: any) => {
@@ -265,12 +293,14 @@ export default async function HomePage({
       hub.english_gloss ||
       items.find((i) => i.english_gloss)?.english_gloss;
 
+    const resolvedTimestamps = resolveHubTimestamps(items, hub.first_seen_at, hub.last_updated_at);
+
     return {
       id: hub.id,
       title: hub.title ?? 'Untitled Topic Hub',
       english_gloss: englishGloss,
       ai_summary: hub.ai_summary ?? null,
-      last_updated_at: hub.last_updated_at ?? hub.first_seen_at ?? new Date().toISOString(),
+      last_updated_at: resolvedTimestamps.last_updated_at,
       og_image: firstOgItem?.og_image ?? null,
       mainstream_count: mainstreamCount,
       grassroots_count: grassrootsCount,

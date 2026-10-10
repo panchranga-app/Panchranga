@@ -29,6 +29,8 @@ async function runClustering() {
 
   const cutoffDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
+  const initialClusterMap = new Map<string, { clusterId?: string | null; hasEmbedding: boolean }>();
+
   if (isConfigured) {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
     // Cluster recent items from the last 48 hours to maintain fast, fresh topic hubs
@@ -37,7 +39,15 @@ async function runClustering() {
       .select('*, source:sources(*)')
       .gte('published_at', cutoffDate)
       .order('published_at', { ascending: false });
-    if (dbItems) rawItems = dbItems as any;
+    if (dbItems) {
+      rawItems = dbItems as any;
+      for (const item of rawItems) {
+        initialClusterMap.set(item.url, {
+          clusterId: item.cluster_id,
+          hasEmbedding: Boolean(item.embedding && Array.isArray(item.embedding) && item.embedding.length > 0),
+        });
+      }
+    }
   } else {
     // Local JSON cache fallback
     if (fs.existsSync(itemsPath)) {
@@ -110,7 +120,12 @@ async function runClustering() {
   const existingSummaryMap = new Map<string, string>();
   if (isConfigured) {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
-    const { data: existingHubs } = await supabase.from('topic_hubs').select('title, ai_summary').not('ai_summary', 'is', null);
+    const { data: existingHubs } = await supabase
+      .from('topic_hubs')
+      .select('title, ai_summary')
+      .not('ai_summary', 'is', null)
+      .order('last_updated_at', { ascending: false })
+      .limit(1000);
     if (existingHubs) {
       for (const h of existingHubs) {
         if (h.ai_summary && isValidAiSummary(h.ai_summary)) {
@@ -158,62 +173,78 @@ async function runClustering() {
       if (error) console.error('⚠️ Error upserting topic hubs chunk:', error);
     }
 
-    // Update cluster_ids and embeddings on raw_items with concurrency
-    console.log(`💾 Syncing cluster IDs and embeddings for ${clusteredItems.length} items to Supabase...`);
+    // Update cluster_ids and embeddings on raw_items only where changed
+    const itemsToUpdate = clusteredItems.filter((item) => {
+      if (!item.cluster_id) return false;
+      const prev = initialClusterMap.get(item.url);
+      if (!prev) return true;
+      return prev.clusterId !== item.cluster_id || !prev.hasEmbedding;
+    });
+
+    console.log(`💾 Syncing cluster IDs and embeddings for ${itemsToUpdate.length} modified items (${clusteredItems.length - itemsToUpdate.length} unchanged)...`);
     const updateLimit = pLimit(15);
-    const updatePromises = clusteredItems
-      .filter((item) => item.cluster_id)
-      .map((item) =>
-        updateLimit(async () => {
-          await supabase
-            .from('raw_items')
-            .update({ cluster_id: item.cluster_id, embedding: item.embedding || null })
-            .eq('url', item.url);
-        })
-      );
+    const updatePromises = itemsToUpdate.map((item) =>
+      updateLimit(async () => {
+        await supabase
+          .from('raw_items')
+          .update({ cluster_id: item.cluster_id, embedding: item.embedding || null })
+          .eq('url', item.url);
+      })
+    );
     await Promise.all(updatePromises);
 
     // Clean up superseded/orphaned topic hubs from previous runs
-    // All items in the 48h window were reclustered into currentRunHubIds; earlier hubs in this window are superseded
     const currentRunHubIds = new Set(hubs.map((h) => h.id));
-    const { data: recentDbHubs } = await supabase
-      .from('topic_hubs')
-      .select('id')
-      .gte('last_updated_at', cutoffDate);
+    const [{ data: recentDbHubs }, { data: oldDbHubs }] = await Promise.all([
+      supabase
+        .from('topic_hubs')
+        .select('id')
+        .gte('last_updated_at', cutoffDate)
+        .order('last_updated_at', { ascending: false })
+        .limit(2000),
+      supabase
+        .from('topic_hubs')
+        .select('id')
+        .lt('last_updated_at', cutoffDate)
+        .order('last_updated_at', { ascending: true })
+        .limit(1000),
+    ]);
 
-    if (recentDbHubs && recentDbHubs.length > 0) {
-      const orphanIds = recentDbHubs
-        .filter((h) => !currentRunHubIds.has(h.id))
-        .map((h) => h.id);
+    const orphanIds = [
+      ...(recentDbHubs || []).filter((h) => !currentRunHubIds.has(h.id)).map((h) => h.id),
+      ...(oldDbHubs || []).filter((h) => !currentRunHubIds.has(h.id)).map((h) => h.id),
+    ];
 
-      if (orphanIds.length > 0) {
-        console.log(`🧹 Found ${orphanIds.length} superseded topic hubs to clean up...`);
-        let deletedCount = 0;
-        const deleteBatchSize = 50;
-        for (let i = 0; i < orphanIds.length; i += deleteBatchSize) {
-          const batch = orphanIds.slice(i, i + deleteBatchSize);
-          const { error: delErr } = await supabase.from('topic_hubs').delete().in('id', batch);
-          if (delErr) {
-            console.warn(`⚠️ Error deleting topic hubs batch [${i}-${i + batch.length}]:`, delErr.message);
-          } else {
-            deletedCount += batch.length;
-          }
+    if (orphanIds.length > 0) {
+      console.log(`🧹 Found ${orphanIds.length} superseded/stale topic hubs to clean up...`);
+      let deletedCount = 0;
+      const deleteBatchSize = 200;
+      for (let i = 0; i < orphanIds.length; i += deleteBatchSize) {
+        const batch = orphanIds.slice(i, i + deleteBatchSize);
+        const { error: delErr } = await supabase.from('topic_hubs').delete().in('id', batch);
+        if (delErr) {
+          console.warn(`⚠️ Error deleting topic hubs batch [${i}-${i + batch.length}]:`, delErr.message);
+        } else {
+          deletedCount += batch.length;
         }
-        console.log(`🧹 Cleaned up ${deletedCount}/${orphanIds.length} superseded topic hubs from database.`);
       }
+      console.log(`🧹 Cleaned up ${deletedCount}/${orphanIds.length} superseded topic hubs from database.`);
     }
-
 
     console.log('✅ Supabase database sync complete.');
   }
 
-  // Always write local cache so app has immediate fresh data
+  // Always write local cache (stripping heavy 384-float embeddings from hub items to keep JSON compact)
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
-  fs.writeFileSync(hubsPath, JSON.stringify(hubs, null, 2));
+  const compactHubs = hubs.map((h) => ({
+    ...h,
+    items: (h.items || []).map(({ embedding, ...rest }: any) => rest),
+  }));
+  fs.writeFileSync(hubsPath, JSON.stringify(compactHubs, null, 2));
   fs.writeFileSync(itemsPath, JSON.stringify(clusteredItems, null, 2));
-  console.log(`💾 Saved ${hubs.length} topic hubs and ${clusteredItems.length} items to local cache.`);
+  console.log(`💾 Saved ${compactHubs.length} topic hubs and ${clusteredItems.length} items to local cache.`);
 }
 
 runClustering().catch((err) => {

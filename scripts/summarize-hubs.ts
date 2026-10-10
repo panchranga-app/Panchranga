@@ -153,8 +153,12 @@ async function runSummarization() {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
-  fs.writeFileSync(hubsPath, JSON.stringify(hubs, null, 2));
-  console.log(`💾 Saved ${hubs.length} updated topic hubs to local cache: ${hubsPath}`);
+  const compactHubs = hubs.map((h) => ({
+    ...h,
+    items: (h.items || []).map(({ embedding, ...rest }: any) => rest),
+  }));
+  fs.writeFileSync(hubsPath, JSON.stringify(compactHubs, null, 2));
+  console.log(`💾 Saved ${compactHubs.length} updated topic hubs to local cache: ${hubsPath}`);
 }
 
 runSummarization().catch((err) => {

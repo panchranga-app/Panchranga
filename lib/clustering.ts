@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { cosineSimilarity } from './embeddings';
 import { isWithinHubDuplicate, normalizeTitle, wordJaccardSimilarity } from './dedup';
 import { RawItem, TopicHub } from './types';
+import { resolveHubTimestamps } from './utils';
 
 export const SIMILARITY_THRESHOLD = 0.45; // Multilingual cosine similarity threshold for clustering same-event items
 export const SINGLE_SOURCE_SANITY_CAP = 12; // Cap on items from one publisher before requiring strict title re-comparison
@@ -9,6 +10,21 @@ export const SINGLE_SOURCE_SANITY_CAP = 12; // Cap on items from one publisher b
 export interface ClusteredResult {
   hubs: TopicHub[];
   clusteredItems: RawItem[];
+}
+
+/**
+ * Generates a deterministic RFC-4122 v4-formatted UUID from a string seed (such as lead article URL/title)
+ * so re-clustering the same 48h window preserves stable hub IDs instead of creating orphaned rows.
+ */
+function deterministicHubUuid(seed: string): string {
+  const hash = crypto.createHash('sha256').update(seed).digest('hex');
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    '4' + hash.slice(13, 16),
+    '8' + hash.slice(17, 20),
+    hash.slice(20, 32),
+  ].join('-');
 }
 
 /**
@@ -22,6 +38,7 @@ export function clusterRawItems(
 ): ClusteredResult {
   const hubs: TopicHub[] = JSON.parse(JSON.stringify(existingHubs));
   const clusteredItems: RawItem[] = JSON.parse(JSON.stringify(rawItems));
+  const usedHubIds = new Set<string>(hubs.map((h) => h.id));
 
   for (const item of clusteredItems) {
     if (!item.embedding || item.embedding.length === 0) continue;
@@ -103,22 +120,30 @@ export function clusterRawItems(
         ) {
           dupCheck.matchedItem.raw_summary = item.raw_summary;
         }
-        bestHub.last_updated_at = new Date().toISOString();
       } else {
         bestHub.items.push(item);
         bestHub.item_count = bestHub.items.length;
-        bestHub.last_updated_at = new Date().toISOString();
       }
+      const resolved = resolveHubTimestamps(bestHub.items, bestHub.first_seen_at, bestHub.last_updated_at);
+      bestHub.first_seen_at = resolved.first_seen_at;
+      bestHub.last_updated_at = resolved.last_updated_at;
     } else {
-      // Create new topic hub for this event
-      const newHubId = crypto.randomUUID();
+      // Create new topic hub for this event with deterministic UUID from lead item
+      const seed = (item.url || item.title || crypto.randomUUID()).trim();
+      let newHubId = deterministicHubUuid(seed);
+      if (usedHubIds.has(newHubId)) {
+        newHubId = deterministicHubUuid(`${seed}-${usedHubIds.size}`);
+      }
+      usedHubIds.add(newHubId);
       item.cluster_id = newHubId;
+
+      const resolved = resolveHubTimestamps([item], item.published_at, item.published_at);
 
       const newHub: TopicHub = {
         id: newHubId,
         title: item.title,
-        first_seen_at: item.published_at || new Date().toISOString(),
-        last_updated_at: new Date().toISOString(),
+        first_seen_at: resolved.first_seen_at,
+        last_updated_at: resolved.last_updated_at,
         item_count: 1,
         mainstream_count: item.lane === 'mainstream' ? 1 : 0,
         grassroots_count: item.lane === 'grassroots' ? 1 : 0,
@@ -130,15 +155,18 @@ export function clusterRawItems(
     }
   }
 
-  // Recalculate lane counts & clean up empty hubs
+  // Recalculate lane counts, timestamps & clean up empty hubs
   const finalHubs = hubs.map((hub) => {
     const itemsInHub = hub.items || [];
     const mainstream = itemsInHub.filter((i) => i.lane === 'mainstream').length;
     const grassroots = itemsInHub.filter((i) => i.lane === 'grassroots').length;
     const discourse = itemsInHub.filter((i) => i.lane === 'discourse').length;
+    const resolved = resolveHubTimestamps(itemsInHub, hub.first_seen_at, hub.last_updated_at);
 
     return {
       ...hub,
+      first_seen_at: resolved.first_seen_at,
+      last_updated_at: resolved.last_updated_at,
       item_count: itemsInHub.length,
       mainstream_count: mainstream,
       grassroots_count: grassroots,
@@ -151,3 +179,4 @@ export function clusterRawItems(
     clusteredItems,
   };
 }
+

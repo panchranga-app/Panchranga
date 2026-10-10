@@ -7,7 +7,7 @@ import { checkSensitiveBypass } from '@/lib/summarizer';
 import CoverageBar from '@/components/CoverageBar';
 import SafeImage from '@/components/SafeImage';
 import HubAiOverview from '@/components/HubAiOverview';
-import { timeAgo } from '@/lib/utils';
+import { timeAgo, resolveHubTimestamps } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
 
 export const revalidate = 60;
@@ -134,6 +134,7 @@ export default async function HubDetailPage({ params }: PageProps) {
   const discourseItems = safeItems.filter((i) => i.lane === 'discourse');
 
   const isSensitive = checkSensitiveBypass(hub);
+  const resolvedTimestamps = resolveHubTimestamps(safeItems, hub.first_seen_at, hub.last_updated_at);
 
   return (
     <div className="max-w-[1320px] mx-auto space-y-6 pb-12">
@@ -149,7 +150,7 @@ export default async function HubDetailPage({ params }: PageProps) {
       {/* 1. Hub Title (h1) */}
       <div className="space-y-2 border-b border-[#E5E5E0] pb-4">
         <div className="text-[11px] font-mono tracking-wider uppercase text-[#6B6B6B]">
-          Topic Hub · {safeItems.length} {safeItems.length === 1 ? 'Source' : 'Sources'} · First seen {timeAgo(hub.first_seen_at)}
+          Topic Hub · {safeItems.length} {safeItems.length === 1 ? 'Source' : 'Sources'} · First seen {timeAgo(resolvedTimestamps.first_seen_at)}
         </div>
         <h1 className="font-serif-title text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-[#1A1A1A]">
           {hub.title ?? 'Untitled Topic Hub'}
