@@ -1,5 +1,14 @@
 import { TopicHub } from './types';
 import { extractArticleText } from './article-extractor';
+import {
+  executeRoutedLlmRequest,
+  executeMapReduceSummary,
+  preprocessLlmInput,
+  estimateTokens,
+  loadQuotaState,
+  saveQuotaState,
+} from './llm-router';
+import { JobPriority } from './llm-config';
 
 export const MANDATORY_DISCLAIMER =
   'This summary is AI-generated from public headlines and may not capture full context. Read the original sources.';
@@ -16,15 +25,22 @@ const SENSITIVE_KEYWORDS = [
   'curfew imposed',
 ];
 
-// Circuit breaker cooldown timestamps (in milliseconds)
-let groqCooldownUntil = 0;
-let geminiCooldownUntil = 0;
-let openRouterCooldownUntil = 0;
+const COMPACT_SYSTEM_PROMPT =
+  'Neutral news editor. Write a 1-2 sentence factual briefing (<=35 words) strictly from the reports. Plain English, no source names, no quotes, no invented facts.';
 
 export interface SummaryResult {
   summary: string | null;
   isFlagged: boolean;
   flagReason?: string;
+  queued?: boolean;
+  status?: 'ok' | 'cached' | 'trivial_bypass' | 'queued_try_later' | 'flagged';
+  fromCache?: boolean;
+  providerUsed?: string;
+}
+
+export interface SummarizeOptions {
+  priority?: JobPriority;
+  fetchImpl?: typeof fetch;
 }
 
 /**
@@ -39,12 +55,13 @@ export function checkSensitiveBypass(hub: TopicHub): boolean {
 }
 
 /**
- * Clean headline helper: strips leading/trailing quotes and source labels.
+ * Clean headline helper: strips leading/trailing quotes and trailing publisher labels (" - The New York Times", " | NDTV").
  */
 export function cleanHeadline(title: string): string {
   if (!title) return '';
   let cleaned = title.replace(/^["'“‘]+|["'”’]+$/g, '').trim();
   cleaned = cleaned.replace(/\s*\|\s*.*$/, '');
+  cleaned = cleaned.replace(/\s+-\s+[A-Z][A-Za-z0-9\s.&'-]{2,35}$/, '');
   cleaned = cleaned.replace(/^Mainstream media coverage highlights\s*/i, '');
   cleaned = cleaned.replace(/\s*as reported by.*$/i, '');
   cleaned = cleaned.replace(/&amp;/g, '&');
@@ -52,7 +69,8 @@ export function cleanHeadline(title: string): string {
   cleaned = cleaned.replace(/&#39;/g, "'");
   cleaned = cleaned.replace(/&lt;/g, '<');
   cleaned = cleaned.replace(/&gt;/g, '>');
-  return cleaned;
+  cleaned = cleaned.replace(/&nbsp;/g, ' ');
+  return cleaned.trim();
 }
 
 /**
@@ -66,251 +84,187 @@ export function cleanSummary(raw: string): string {
   cleaned = cleaned.replace(/&#39;/g, "'");
   cleaned = cleaned.replace(/&lt;/g, '<');
   cleaned = cleaned.replace(/&gt;/g, '>');
+  cleaned = cleaned.replace(/&nbsp;/g, ' ');
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  // Strip "read more", "continue reading", etc.
   cleaned = cleaned.replace(/(?:read more|continue reading|click here for more|full coverage)[\s\S]*$/i, '').trim();
   return cleaned;
 }
 
 /**
- * Generates a neutral, guardrailed 1-sentence summary describing what happened in plain neutral English (max 20 words).
+ * Cleans raw LLM output before validation.
  */
-export async function generateNeutralSummary(hub: TopicHub): Promise<SummaryResult> {
+export function cleanGeneratedText(rawText: string): string {
+  return rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
+    .replace(/^["'“‘]+|["'”’]+$/g, '')
+    .replace(/^(?:neutral briefing|briefing|summary):\s*/i, '')
+    .replace(/^Mainstream media coverage highlights\s*/i, '')
+    .replace(/\s*as reported by.*$/i, '')
+    .trim();
+}
+
+/**
+ * Validates that an LLM output is a genuine news summary and not leaked chain-of-thought or rubric text.
+ */
+export function isValidAiSummary(text: string): boolean {
+  if (!text || text.length < 20) return false;
+  const lower = text.toLowerCase();
+  if (
+    text.startsWith('/') ||
+    text.startsWith('*') ||
+    text.startsWith('#') ||
+    lower.includes('word count') ||
+    lower.includes('<= 35') ||
+    lower.includes('<=35') ||
+    lower.includes('thinking process') ||
+    lower.includes('analyze the request') ||
+    lower.includes('neutral news editor') ||
+    lower.includes('constraint:') ||
+    lower.includes('no factual news briefing can be generated')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Generates a neutral, guardrailed 1-2 sentence summary describing what happened in plain neutral English (max 35 words).
+ */
+export async function generateNeutralSummary(
+  hub: TopicHub,
+  options: SummarizeOptions = {}
+): Promise<SummaryResult> {
   const items = hub.items || [];
   const primaryTitle = cleanHeadline(hub.title || items[0]?.title || '');
 
   // Extract best fallback from article description if available
   const rawDesc = items.find((i) => i.raw_summary || i.og_description);
   const bestSnippet = rawDesc ? cleanSummary(rawDesc.raw_summary || rawDesc.og_description || '') : '';
-  const firstSentence = bestSnippet ? (bestSnippet.split(/(?<=[.?!])\s+/)[0] || bestSnippet).slice(0, 140) : '';
-  const defaultFallback = firstSentence.length > 20 ? firstSentence : primaryTitle;
+  const firstSentence = bestSnippet ? (bestSnippet.split(/(?<=[.?!])\s+/)[0] || bestSnippet).slice(0, 180) : '';
+  const defaultFallback =
+    firstSentence.length > 25 && firstSentence.toLowerCase() !== primaryTitle.toLowerCase()
+      ? firstSentence
+      : primaryTitle;
 
   if (checkSensitiveBypass(hub)) {
     return {
       summary: primaryTitle,
       isFlagged: true,
+      status: 'flagged',
       flagReason:
         'AI Summary bypassed for high-stakes sensitive topic. Displaying verified headline only.',
     };
   }
 
-  if (items.length === 0) {
-    return { summary: defaultFallback, isFlagged: false };
+  // Trivial input bypass: skip LLM entirely when there are 0 items or a single short item with no additional context
+  if (items.length === 0 || (items.length === 1 && (!bestSnippet || bestSnippet.length < 40))) {
+    const state = loadQuotaState();
+    state.telemetry.trivialBypasses++;
+    saveQuotaState();
+    return {
+      summary: defaultFallback,
+      isFlagged: false,
+      status: 'trivial_bypass',
+    };
   }
 
-  // Select up to 8 representative items prioritizing diverse lanes and sources
+  // Select up to 6 representative items prioritizing diverse lanes
   let selectedItems = items;
-  if (items.length > 25) {
+  if (items.length > 6) {
     const mainstream = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'mainstream');
     const grassroots = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'grassroots');
     const discourse = items.filter((i) => (i.lane || i.sources?.lane || i.source?.lane) === 'discourse');
 
     const picked: typeof items = [];
-    picked.push(...mainstream.slice(0, 3));
-    picked.push(...grassroots.slice(0, 3));
+    picked.push(...mainstream.slice(0, 2));
+    picked.push(...grassroots.slice(0, 2));
     picked.push(...discourse.slice(0, 2));
 
     const pickedUrls = new Set(picked.map((p) => p.id || p.url));
     for (const it of items) {
-      if (picked.length >= 8) break;
+      if (picked.length >= 6) break;
       if (!pickedUrls.has(it.id || it.url)) {
         picked.push(it);
         pickedUrls.add(it.id || it.url);
       }
     }
     selectedItems = picked;
-  } else if (items.length > 8) {
-    selectedItems = items.slice(0, 8);
   }
 
-  // Build concise context for the LLM
-  const headlines = selectedItems.map((i) => {
+  // Build deduplicated lines so identical syndicated headlines are not repeated
+  const rawReportLines = selectedItems.map((i) => {
     const title = cleanHeadline(i.title);
-    const snippet = i.raw_summary ? cleanSummary(i.raw_summary).slice(0, 100) : '';
-    return snippet ? `- ${title} (Context: ${snippet})` : `- ${title}`;
+    const snippet = i.raw_summary ? cleanSummary(i.raw_summary).slice(0, 110) : '';
+    if (snippet && snippet.toLowerCase() !== title.toLowerCase() && !title.toLowerCase().includes(snippet.toLowerCase().slice(0, 35))) {
+      return `- ${title}: ${snippet}`;
+    }
+    return `- ${title}`;
   });
 
-  // Extract real article text from primary source webpage (capped at 2500ms timeout)
-  let fullArticleText: string | null = null;
-  if (items[0]?.url) {
+  const dedupedReports = preprocessLlmInput(rawReportLines.join('\n'));
+
+  // Only scrape webpage text if deduplicated headlines/snippets have sparse context (< 220 chars)
+  // and this is not a mocked unit test
+  let articleExcerpt = '';
+  if (dedupedReports.length < 220 && items[0]?.url && !options.fetchImpl) {
     try {
-      const textPromise = extractArticleText(items[0].url, 2500);
-      const timeoutPromise = new Promise<string | null>((resolve) =>
-        setTimeout(() => resolve(null), 2500)
-      );
-      fullArticleText = await Promise.race([textPromise, timeoutPromise]);
+      const fullArticleText = await Promise.race([
+        extractArticleText(items[0].url, 2200),
+        new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 2200)),
+      ]);
+      if (fullArticleText) {
+        articleExcerpt = `\nExcerpt: ${preprocessLlmInput(fullArticleText).slice(0, 650)}`;
+      }
     } catch {}
   }
-  const articleExcerpt = fullArticleText ? `\nKey Excerpt from Primary Report:\n${fullArticleText.slice(0, 1000)}\n` : '';
 
-  const groqKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+  const userPrompt = `${dedupedReports}${articleExcerpt}`;
+  const totalInputTokens = estimateTokens(userPrompt);
 
-  const prompt = `You are a neutral news editor.
-Write a concise, fact-rich 1-2 sentence neutral briefing (max 35 words) capturing the key event, concrete facts, numbers, and locations.
+  // Use map-reduce chunking if input is long (> 850 tokens)
+  const routerRes =
+    totalInputTokens > 850
+      ? await executeMapReduceSummary(userPrompt, COMPACT_SYSTEM_PROMPT, {
+          priority: options.priority || 'interactive',
+          isSensitive: false,
+          hubId: hub.id,
+          fetchImpl: options.fetchImpl,
+          validator: (txt) => isValidAiSummary(cleanGeneratedText(txt)),
+        })
+      : await executeRoutedLlmRequest(
+          {
+            jobType: totalInputTokens > 2000 ? 'long_input' : 'short_medium',
+            priority: options.priority || 'interactive',
+            systemPrompt: COMPACT_SYSTEM_PROMPT,
+            userPrompt,
+            isSensitive: false,
+            hubId: hub.id,
+            fetchImpl: options.fetchImpl,
+          },
+          (txt) => isValidAiSummary(cleanGeneratedText(txt))
+        );
 
-Rules:
-- Plain English only
-- No source names or media labels (no "according to", "as reported by", quotes)
-- State facts and outcomes directly
-- If event is in India, mention state/city if available
-
-News reports:
-${headlines.join('\n')}
-${articleExcerpt}
-Neutral briefing:`;
-
-  const cleanGeneratedText = (rawText: string): string => {
-    return rawText
-      .replace(/^["'“‘]+|["'”’]+$/g, '')
-      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/^Mainstream media coverage highlights\s*/i, '')
-      .replace(/\s*as reported by.*$/i, '')
-      .trim();
-  };
-
-  // 1. Try Groq (Ultra-fast inference, 4500ms timeout)
-  if (groqKey && Date.now() > groqCooldownUntil) {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'qwen/qwen3.8-27b',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a neutral news editor. Write a concise, fact-rich 1-2 sentence neutral briefing (max 35 words) capturing the key event, concrete facts, numbers, and locations. Plain English only. No source names, no quotes.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 75,
-          temperature: 0.2,
-        }),
-        signal: AbortSignal.timeout(4500),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const text = json.choices?.[0]?.message?.content?.trim();
-        if (text) {
-          return { summary: cleanGeneratedText(text), isFlagged: false };
-        }
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        const errMsg = errJson?.error?.message || response.statusText;
-        console.warn('⚠️ Groq API responded with error:', errMsg);
-        if (response.status === 429) {
-          const isDaily = errMsg.toLowerCase().includes('tokens per day') || errMsg.toLowerCase().includes('tpd');
-          groqCooldownUntil = Date.now() + (isDaily ? 60 * 60 * 1000 : 60 * 1000);
-          console.warn(`⏳ Groq in cooldown for ${isDaily ? '60 mins (daily limit)' : '60 secs'}. Failing over...`);
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ Groq API summary call failed or timed out, falling back...', e);
+  if (routerRes.text) {
+    const cleaned = cleanGeneratedText(routerRes.text);
+    if (isValidAiSummary(cleaned)) {
+      return {
+        summary: cleaned,
+        isFlagged: false,
+        queued: false,
+        status: routerRes.status,
+        fromCache: routerRes.fromCache,
+        providerUsed: routerRes.provider ? `${routerRes.provider}:${routerRes.model}` : undefined,
+      };
     }
   }
 
-  // 2. Try Google Gemini Flash (4500ms timeout)
-  if (geminiKey && Date.now() > geminiCooldownUntil) {
-    try {
-      const geminiModel = 'gemini-3.8-flash';
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 300, temperature: 0.2 },
-          }),
-          signal: AbortSignal.timeout(4500),
-        }
-      );
-
-      if (response.ok) {
-        const json = await response.json();
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) {
-          return { summary: cleanGeneratedText(text), isFlagged: false };
-        }
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        console.warn('⚠️ Gemini API responded with error:', errJson?.error?.message || response.statusText);
-        if (response.status === 429) {
-          geminiCooldownUntil = Date.now() + 60 * 1000;
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ Gemini API summary call failed or timed out, falling back to OpenRouter...', e);
-    }
-  }
-
-  // 3. Try OpenRouter (Multi-model free tier fallback, 4500ms timeout)
-  if (openrouterKey && Date.now() > openRouterCooldownUntil) {
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openrouterKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app',
-          'X-Title': 'Panchranga',
-        },
-        body: JSON.stringify({
-          model: 'nvidia/nemotron-3.5-lightning:free',
-          models: [
-            'nvidia/nemotron-3.5-lightning:free',
-            'inclusionai/ling-3.0-flash-sante:free',
-            'liquid/lfm-2.5-2.6b:free',
-          ],
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a neutral news editor. Write a concise, fact-rich 1-2 sentence neutral briefing (max 35 words) capturing the key event, concrete facts, numbers, and locations. Plain English only. No source names, no quotes.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 150,
-          temperature: 0.2,
-        }),
-        signal: AbortSignal.timeout(4500),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const text = (json.choices?.[0]?.message?.content || json.choices?.[0]?.message?.reasoning || '').trim();
-        if (text) {
-          const cleanText = cleanGeneratedText(text);
-          if (cleanText.length > 10) {
-            return { summary: cleanText, isFlagged: false };
-          }
-        }
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        console.warn('⚠️ OpenRouter API responded with error:', errJson?.error?.message || response.statusText);
-        if (response.status === 429) {
-          openRouterCooldownUntil = Date.now() + 60 * 1000;
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ OpenRouter API call failed or timed out, falling back to rule-based...', e);
-    }
-  }
-
-  // 4. Fallback: clean single sentence without quotes or "as reported by"
+  // Every route exhausted or deferred -> return graceful fallback with queued flag
   return {
     summary: defaultFallback,
     isFlagged: false,
+    queued: routerRes.queued,
+    status: routerRes.status,
+    fromCache: false,
   };
 }

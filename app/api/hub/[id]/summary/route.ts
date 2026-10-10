@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/client';
-import { generateNeutralSummary, cleanHeadline } from '@/lib/summarizer';
+import { generateNeutralSummary, cleanHeadline, isValidAiSummary } from '@/lib/summarizer';
 import { TopicHub, RawItem } from '@/lib/types';
 import fs from 'fs';
 import path from 'path';
@@ -82,8 +82,8 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
     };
 
-    // 3. Cache Hit: Return existing AI summary immediately if already present
-    if (hub.ai_summary && hub.ai_summary.trim().length > 10) {
+    // 3. Cache Hit: Return existing AI summary immediately if already present and valid
+    if (hub.ai_summary && isValidAiSummary(hub.ai_summary.trim())) {
       return NextResponse.json(
         {
           summary: hub.ai_summary,
@@ -94,11 +94,13 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
       );
     }
 
-    // 4. Cache Miss: Generate AI summary on-demand using the multi-provider cascade
+    // 4. Cache Miss: Generate AI summary on-demand using the quota-aware multi-provider router
     hub.items = items;
-    const { summary, isFlagged, flagReason } = await generateNeutralSummary(hub);
+    const { summary, isFlagged, flagReason, queued, status, fromCache, providerUsed } =
+      await generateNeutralSummary(hub, { priority: 'interactive' });
 
-    if (summary && !isFlagged) {
+    // Only persist to Supabase when a genuine AI summary was produced (never permanently cache queued fallbacks)
+    if (summary && !isFlagged && !queued && status !== 'trivial_bypass' && isValidAiSummary(summary)) {
       // 5. Persist the generated summary to Supabase so it's cached permanently
       if (supabase) {
         try {
@@ -131,9 +133,12 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
         summary: summary || cleanHeadline(hub.title),
         isFlagged,
         flagReason,
-        cached: false,
+        cached: Boolean(fromCache),
+        queued: Boolean(queued),
+        status: status || 'ok',
+        provider: providerUsed,
       },
-      { headers: cacheHeaders }
+      { headers: queued ? { 'Cache-Control': 'no-store' } : cacheHeaders }
     );
   } catch (error: any) {
     console.error('Handled error in on-demand summary:', error);
