@@ -27,10 +27,11 @@ async function runClustering() {
   const itemsPath = path.resolve(dataDir, 'ingested-items.json');
   const hubsPath = path.resolve(dataDir, 'topic-hubs.json');
 
+  const cutoffDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
   if (isConfigured) {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
     // Cluster recent items from the last 48 hours to maintain fast, fresh topic hubs
-    const cutoffDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const { data: dbItems } = await supabase
       .from('raw_items')
       .select('*, source:sources(*)')
