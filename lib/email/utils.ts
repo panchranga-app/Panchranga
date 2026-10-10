@@ -70,7 +70,7 @@ export function buildComplianceHeaders(
   const tokenParam = unsubscribeToken ? `?token=${encodeURIComponent(unsubscribeToken)}` : '';
   const httpsUrl = `${baseSiteUrl}/api/newsletter/unsubscribe${tokenParam}`;
   
-  const mailtoAddress = process.env.GMAIL_USER || 'unsubscribe@panchranga.vercel.app';
+  const mailtoAddress = process.env.GMAIL_USER || 'panchranga.news@gmail.com';
   const mailtoUrl = `mailto:${mailtoAddress}?subject=Unsubscribe%20${encodeURIComponent(recipientEmail)}`;
 
   return {

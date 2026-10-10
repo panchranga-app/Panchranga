@@ -124,7 +124,6 @@ export default function Footer() {
               <ul className="space-y-1 text-[#6B7280] text-xs">
                 <li>Browser Extension (coming soon)</li>
                 <li>Public API (coming soon)</li>
-                <li><Link href="/loader-demo" className="hover:text-white transition-colors text-gray-400">Brand Loader Lab →</Link></li>
               </ul>
             </div>
           </div>

@@ -195,10 +195,10 @@ export default function AboutPage() {
                 Notice an issue with source categorization or lane placement?
               </p>
               <a
-                href="mailto:contact@panchranga.in"
+                href="mailto:panchranga.news@gmail.com"
                 className="text-xs font-medium text-[#C0392B] hover:underline block pt-1"
               >
-                contact@panchranga.in →
+                panchranga.news@gmail.com →
               </a>
             </div>
             <div className="p-4 rounded-lg bg-[#F9F9F8] border border-[#E5E5E0] space-y-1">
