@@ -114,6 +114,53 @@ If subscriber count exceeds the combined available daily budget across all activ
 
 ---
 
+## 🤖 LLM Quota-Aware Router & Free-Tier Budget Management
+
+Panchranga's AI summarizer (`lib/summarizer.ts`) and Indic headline translator (`lib/translator.ts`) route all requests through a centralized, quota-aware router (`lib/llm-router.ts`) backed by verified free-tier limits (`lib/llm-config.ts`).
+
+### 1. Routing Order by Job Type
+- **Short/Medium Briefings (`short_medium`), Chunk Summaries (`chunk_summary`), & Translations (`headline_translation`)**:
+  1. **Groq Per-Model Pool (Round-Robin)**: Rotates across `openai/gpt-oss-20b` (`reasoning_effort: 'low'`) → `qwen/qwen3.8-27b` (`reasoning_effort: 'none'`) → `openai/gpt-oss-120b` (`reasoning_effort: 'low'`). Each model has its own independent `1,000 RPD` / `8,000 TPM` bucket (`3,000 RPD` combined).
+  2. **Cloudflare Workers AI**: `@cf/meta/llama-3.1-8b-instruct-fast` (`10,000 free neurons/day` ≈ `4,800 summaries/day`).
+  3. **Google Gemini API**: `gemini-3.5-flash-lite` (`0` thinking tokens, `1M` context window). *Skipped if content is flagged sensitive due to Google's unpaid tier data-training terms.*
+  4. **OpenRouter (`:free` Last-Resort Spare)**: `google/gemma-4-31b-it:free` → `google/gemma-4-26b-a4b-it:free` (strictly last resort due to the shared `50 RPD` unpaid account cap).
+- **Long Inputs (`long_input` > 2,000 tokens)**:
+  - Routes to `gemini:gemini-3.5-flash-lite` first (1,048,576 token context window), followed by Groq (`131,072` context window) and Cloudflare. Documents exceeding `850` tokens automatically use **Map-Reduce Chunking** (`chunk_summary` at `max_tokens: 70` → single `final_merge` at `max_tokens: 110`).
+- **Final Merge / Quality-Critical Pass (`final_merge`)**:
+  - Routes to the strongest available model with headroom (`groq:openai/gpt-oss-120b` → `groq:qwen/qwen3.8-27b` → `gemini:gemini-3.5-flash-lite` → `cloudflare:@cf/meta/llama-3.1-8b-instruct-fast`).
+
+### 2. How Quotas Are Tracked & Reset
+- **Persistent State**: Counters (`requestsToday`, `tokensToday`, `neuronsToday`, rolling 60s `requestsThisMinute`/`tokensThisMinute`, circuit-breaker `coolingUntilMs`, and `dailyResetAtMs`) are persisted in `data/llm-quota-state.json`.
+- **Content-Hash Cache**: Responses are cached by `SHA-256(PROMPT_VERSION | jobType | systemPrompt | normalizedInput)` in `data/llm-summary-cache.json` (24h TTL) so identical content is never summarized twice.
+- **Real Reset Schedules**:
+  - **Groq**: Rolling 24h window synced dynamically with live `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens` headers.
+  - **Cloudflare Workers AI & OpenRouter**: Fixed reset at `00:00 UTC`.
+  - **Google Gemini API**: Fixed daily RPD reset at midnight Pacific Time (`07:00 UTC` PDT / `08:00 UTC` PST).
+- **All-Day Pacing & Emergency Buffer**: `12%` (`EMERGENCY_BUFFER_RATIO = 0.12`) of each model's daily quota is reserved exclusively for interactive user requests (`priority: 'interactive'`). Background batch jobs (`priority: 'background'`) are paced across 24 hourly time slices and deferred to `data/llm-deferred-queue.json` if a slice or buffer threshold is reached.
+
+### 3. How to Update Limits
+Edit `VERIFIED_LLM_CONFIG` in [`lib/llm-config.ts`](lib/llm-config.ts):
+1. Update the model's `limits` (`rpm`, `rpd`, `tpm`, `tpd`, `dailyNeurons`, `contextWindow`, `maxOutputTokens`).
+2. Set `value` to the exact number if confirmed via live response headers or account endpoint, or `'UNVERIFIED'` with a safe `operationalCeiling`.
+3. Update `last_verified` (`YYYY-MM-DD`) and `source`.
+
+### 4. How to Read the Quota Log
+At the end of `npm run summarize` (or by calling `formatQuotaDashboardLog()` from `lib/llm-router.ts`), the router prints:
+```text
+📊 [LLM Quota Dashboard] Cache Hit Rate: 33.3% (4 hits / 8 misses) | Trivial Bypasses: 12 | Fallbacks: 1 | 429s: 0 | Queued: 0
+   ├─ [GROQ] openai/gpt-oss-20b: Req 3/1000 (rem 997) | Tok 410/200000 | 429s: 0 | HEALTHY
+   ├─ [GROQ] qwen/qwen3.8-27b: Req 3/1000 (rem 997) | Tok 295/200000 | 429s: 0 | HEALTHY
+   ├─ [GROQ] openai/gpt-oss-120b: Req 2/1000 (rem 998) | Tok 260/200000 | 429s: 0 | HEALTHY
+   ├─ [CLOUDFLARE] @cf/meta/llama-3.1-8b-instruct-fast: Req 1/4800 (rem 4799) | Tok 142/750000 | Neurons: 1.9/10000 | 429s: 0 | HEALTHY
+   ├─ [GEMINI] gemini-3.5-flash-lite: Req 1/1000 (rem 999) | Tok 88/1500000 | 429s: 0 | HEALTHY
+   ├─ [OPENROUTER] google/gemma-4-31b-it:free: Req 0/50 (rem 50) | Tok 0/100000 | 429s: 0 | HEALTHY
+```
+- **`HEALTHY` vs `COOLING until <ISO>`**: Shows whether the circuit breaker is open (`HEALTHY`) or tripped due to consecutive errors / 429 cooldown (`COOLING`).
+- **`Queued`**: Number of jobs waiting in `data/llm-deferred-queue.json` to drain automatically when quotas reset.
+
+---
+
 ## ⚖️ License
 
 MIT License. Open Source, No Editors, No Paywall.
+
