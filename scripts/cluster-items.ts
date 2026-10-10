@@ -105,13 +105,16 @@ async function runClustering() {
   });
 
   // Keep map of existing AI summaries so re-clustering does not wipe them out
+  const { isValidAiSummary } = await import('../lib/summarizer');
   const existingSummaryMap = new Map<string, string>();
   if (isConfigured) {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
     const { data: existingHubs } = await supabase.from('topic_hubs').select('title, ai_summary').not('ai_summary', 'is', null);
     if (existingHubs) {
       for (const h of existingHubs) {
-        if (h.ai_summary) existingSummaryMap.set(h.title.toLowerCase().trim(), h.ai_summary);
+        if (h.ai_summary && isValidAiSummary(h.ai_summary)) {
+          existingSummaryMap.set(h.title.toLowerCase().trim(), h.ai_summary);
+        }
       }
     }
   }
@@ -119,7 +122,7 @@ async function runClustering() {
     try {
       const localHubs = JSON.parse(fs.readFileSync(hubsPath, 'utf-8'));
       for (const h of localHubs) {
-        if (h.ai_summary && !existingSummaryMap.has(h.title.toLowerCase().trim())) {
+        if (h.ai_summary && isValidAiSummary(h.ai_summary) && !existingSummaryMap.has(h.title.toLowerCase().trim())) {
           existingSummaryMap.set(h.title.toLowerCase().trim(), h.ai_summary);
         }
       }
