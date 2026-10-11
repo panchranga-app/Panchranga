@@ -13,6 +13,11 @@ import { STARTER_SOURCES, FEED_FALLBACKS } from '../lib/constants';
 import { getCategoryAndRegion } from '../lib/topics';
 import { fetchCurrentsApi } from '../lib/fetchers/currents';
 import { fetchGoogleNewsAggregator } from '../lib/fetchers/google-news';
+import {
+  fetchYouTubeViaApiAnything,
+  fetchCustomSiteViaApiAnything,
+  isApiAnythingCliInstalled,
+} from '../lib/fetchers/api-anything';
 import { deduplicateAggregatorItems } from '../lib/dedup';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -148,6 +153,21 @@ async function fetchSingleSource(source: any): Promise<IngestedItem[]> {
     }
   }
 
+  // 1b. YouTube channels / video journalism (via API Anything `youtube search` Tier-1 op)
+  if (source.type === 'youtube' || source.feed_url.includes('youtube.com/results')) {
+    return await fetchYouTubeViaApiAnything(source, Math.min(MAX_ITEMS_PER_SOURCE, 15));
+  }
+
+  // 1c. Non-RSS civic / digital portals (via API Anything Tier-1 HTML/JSON extractor + fallback)
+  const isCustomApiPortal =
+    (source.type === 'api' && source.lane !== 'aggregator') ||
+    source.name === 'The Tatva' ||
+    source.name === 'PRS Legislative Research' ||
+    source.name === 'ADR (Association for Democratic Reforms)';
+  if (isCustomApiPortal) {
+    return await fetchCustomSiteViaApiAnything(source, MAX_ITEMS_PER_SOURCE);
+  }
+
   // 2. RSS / Atom / Google News syndication feed
   let targetUrl = source.feed_url;
   const fallbackUrl = FEED_FALLBACKS[source.name];
@@ -263,18 +283,24 @@ async function fetchRss() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  let activeSources = STARTER_SOURCES.map((s, idx) => ({ ...s, id: `source-${idx + 1}` }));
+  let activeSources: any[] = STARTER_SOURCES.map((s, idx) => ({ ...s, id: `source-${idx + 1}`, is_active: true }));
   const isConfigured = Boolean(supabaseUrl && supabaseKey);
   let supabase: any = null;
 
-  // Read local sources cache first if present to preserve newly added sources and IDs
+  // Merge local sources cache if present to preserve existing IDs and health metadata while picking up new STARTER_SOURCES
   const dataDir = path.resolve(process.cwd(), 'data');
   const sourcesPath = path.resolve(dataDir, 'sources.json');
   if (fs.existsSync(sourcesPath)) {
     try {
       const localSources = JSON.parse(fs.readFileSync(sourcesPath, 'utf-8'));
       if (Array.isArray(localSources) && localSources.length > 0) {
-        activeSources = localSources.filter((s: any) => s.is_active !== false);
+        const localMap = new Map(localSources.map((s: any) => [s.name, s]));
+        activeSources = activeSources
+          .map((src: any) => {
+            const cached = localMap.get(src.name);
+            return cached ? { ... cached, ...src, id: cached.id || src.id, is_active: cached.is_active !== false } : src;
+          })
+          .filter((s: any) => s.is_active !== false);
       }
     } catch (err: any) {
       console.warn('Could not read data/sources.json:', err.message);
@@ -297,12 +323,37 @@ async function fetchRss() {
     }
   }
 
+  const cliReady = await isApiAnythingCliInstalled();
+  console.log(
+    `🔌 API Anything Engine: ${cliReady ? 'CLI binary active + Tier-1 HTTP' : 'Built-in Tier-1 plain-HTTP engine active'}`
+  );
   console.log(`📡 Ingesting up to ${MAX_ITEMS_PER_SOURCE} items from ${activeSources.length} active sources...`);
   const allItems: IngestedItem[] = [];
 
   const standardSources = activeSources.filter((s) => s.type !== 'reddit' && s.lane !== 'aggregator' && !s.feed_url.includes('reddit.com'));
   const redditSources = activeSources.filter((s) => s.type === 'reddit' || s.feed_url.includes('reddit.com'));
   const aggregatorSources = activeSources.filter((s) => s.lane === 'aggregator');
+
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const sourceHealthMap = new Map<string, { id: string; name: string; lane: string; type: string; feed_url: string; language: string; region?: string | null; is_active: boolean; last_status: string; last_error: string | null; last_attempted_at: string }>();
+
+  const recordSourceHealth = (source: any, status: 'healthy' | 'error', errMsg: string | null = null) => {
+    if (source?.id && uuidRegex.test(source.id)) {
+      sourceHealthMap.set(source.id, {
+        id: source.id,
+        name: source.name,
+        lane: source.lane,
+        type: source.type || 'rss',
+        feed_url: source.feed_url,
+        language: source.language || 'en',
+        region: source.region || null,
+        is_active: source.is_active !== false,
+        last_status: status,
+        last_error: errMsg ? errMsg.slice(0, 500) : null,
+        last_attempted_at: new Date().toISOString(),
+      });
+    }
+  };
 
   // 1. Process Standard RSS Feeds with Bounded Concurrency (p-limit)
   const limit = pLimit(CONCURRENCY_LIMIT);
@@ -312,31 +363,13 @@ async function fetchRss() {
     limit(async () => {
       try {
         const items = await fetchSingleSource(source);
-        if (supabase && source.id && source.id.length > 10) {
-          await supabase
-            .from('sources')
-            .update({
-              last_status: 'healthy',
-              last_error: null,
-              last_attempted_at: new Date().toISOString(),
-            })
-            .eq('id', source.id);
-        }
+        recordSourceHealth(source, 'healthy', null);
         console.log(`✓ [${source.lane.toUpperCase()}] ${source.name} (${source.language}): +${items.length} items`);
         return items;
       } catch (err: any) {
         const errMsg = err?.message || 'Unknown fetch error';
         console.log(`✗ [${source?.lane?.toUpperCase() || 'SRC'}] ${source?.name}: ${errMsg}`);
-        if (supabase && source.id && source.id.length > 10) {
-          await supabase
-            .from('sources')
-            .update({
-              last_status: 'error',
-              last_error: errMsg.slice(0, 500),
-              last_attempted_at: new Date().toISOString(),
-            })
-            .eq('id', source.id);
-        }
+        recordSourceHealth(source, 'error', errMsg);
         return [];
       }
     })
@@ -405,17 +438,7 @@ async function fetchRss() {
 
               allItems.push(...mappedItems);
               console.log(`✓ [DISCOURSE] ${source.name}: +${mappedItems.length} community posts`);
-
-              if (supabase && source.id && source.id.length > 10) {
-                await supabase
-                  .from('sources')
-                  .update({
-                    last_status: 'healthy',
-                    last_error: null,
-                    last_attempted_at: new Date().toISOString(),
-                  })
-                  .eq('id', source.id);
-              }
+              recordSourceHealth(source, 'healthy', null);
             }
           }
         }
@@ -430,28 +453,10 @@ async function fetchRss() {
           const items = await fetchSingleSource(source);
           allItems.push(...items);
           console.log(`✓ [DISCOURSE] ${source.name}: +${items.length} community posts`);
-          if (supabase && source.id && source.id.length > 10) {
-            await supabase
-              .from('sources')
-              .update({
-                last_status: 'healthy',
-                last_error: null,
-                last_attempted_at: new Date().toISOString(),
-              })
-              .eq('id', source.id);
-          }
+          recordSourceHealth(source, 'healthy', null);
         } catch (err: any) {
           console.log(`✗ [DISCOURSE] ${source.name}: ${err.message || err}`);
-          if (supabase && source.id && source.id.length > 10) {
-            await supabase
-              .from('sources')
-              .update({
-                last_status: 'error',
-                last_error: (err.message || 'Unknown Reddit fetch error').slice(0, 500),
-                last_attempted_at: new Date().toISOString(),
-              })
-              .eq('id', source.id);
-          }
+          recordSourceHealth(source, 'error', err.message || 'Unknown Reddit fetch error');
         }
         await sleep(5000);
       }
@@ -487,16 +492,7 @@ async function fetchRss() {
   for (const aggSource of aggregatorSources) {
     const count = allItems.filter((i) => i.source_name === aggSource.name).length;
     console.log(`✓ [AGGREGATOR] ${aggSource.name}: +${count} deduplicated stories`);
-    if (supabase && aggSource.id && aggSource.id.length > 10) {
-      await supabase
-        .from('sources')
-        .update({
-          last_status: 'healthy',
-          last_error: null,
-          last_attempted_at: new Date().toISOString(),
-        })
-        .eq('id', aggSource.id);
-    }
+    recordSourceHealth(aggSource, 'healthy', null);
   }
 
   console.log(`\n📊 Total raw items successfully fetched: ${allItems.length}`);
@@ -508,36 +504,47 @@ async function fetchRss() {
   }
   console.log('🏷️  Category breakdown:', categoryCounts);
 
-  if (isConfigured && supabase && allItems.length > 0) {
-    // Deduplicate items by URL to prevent Postgres intra-batch ON CONFLICT errors
-    const uniqueItems = Array.from(new Map(allItems.map((item) => [item.url, item])).values());
-    console.log(`💾 Upserting ${uniqueItems.length} unique raw items with categories into Supabase...`);
-    const chunkSize = 50;
-    for (let i = 0; i < uniqueItems.length; i += chunkSize) {
-      const chunk = uniqueItems.slice(i, i + chunkSize).map((item) => ({
-        source_id: (item.source_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.source_id)) ? item.source_id : null,
-        title: item.title,
-        url: item.url,
-        published_at: item.published_at,
-        raw_summary: item.raw_summary,
-        category: item.category,
-        og_image: item.og_image,
-        og_description: item.og_description,
-        fetched_at: item.fetched_at,
-      }));
-      const { error: upsertErr } = await supabase.from('raw_items').upsert(chunk, { onConflict: 'url' });
-      if (upsertErr) {
-        // If Supabase complains that category column does not exist yet, fallback gracefully without category
-        if (upsertErr.message?.includes('category')) {
-          console.warn('⚠️ Category column not yet in Supabase schema. Retrying without category...');
-          const legacyChunk = chunk.map(({ category, ...rest }) => rest);
-          await supabase.from('raw_items').upsert(legacyChunk, { onConflict: 'url' });
-        } else {
-          console.error('Supabase upsert error:', upsertErr.message);
-        }
+  if (isConfigured && supabase) {
+    // Batch update source health telemetry in a single request instead of 89 separate calls
+    if (sourceHealthMap.size > 0) {
+      const sourceUpdates = Array.from(sourceHealthMap.values());
+      const { error: srcErr } = await supabase.from('sources').upsert(sourceUpdates, { onConflict: 'id' });
+      if (srcErr) {
+        console.warn('⚠️ Batch source health update warning:', srcErr.message);
       }
     }
-    console.log('✅ Successfully stored items in Supabase.');
+
+    if (allItems.length > 0) {
+      // Deduplicate items by URL to prevent Postgres intra-batch ON CONFLICT errors
+      const uniqueItems = Array.from(new Map(allItems.map((item) => [item.url, item])).values());
+      console.log(`💾 Upserting ${uniqueItems.length} unique raw items with categories into Supabase...`);
+      const chunkSize = 150;
+      for (let i = 0; i < uniqueItems.length; i += chunkSize) {
+        const chunk = uniqueItems.slice(i, i + chunkSize).map((item) => ({
+          source_id: (item.source_id && uuidRegex.test(item.source_id)) ? item.source_id : null,
+          title: item.title,
+          url: item.url,
+          published_at: item.published_at,
+          raw_summary: item.raw_summary,
+          category: item.category,
+          og_image: item.og_image,
+          og_description: item.og_description,
+          fetched_at: item.fetched_at,
+        }));
+        const { error: upsertErr } = await supabase.from('raw_items').upsert(chunk, { onConflict: 'url' });
+        if (upsertErr) {
+          // If Supabase complains that category column does not exist yet, fallback gracefully without category
+          if (upsertErr.message?.includes('category')) {
+            console.warn('⚠️ Category column not yet in Supabase schema. Retrying without category...');
+            const legacyChunk = chunk.map(({ category, ...rest }) => rest);
+            await supabase.from('raw_items').upsert(legacyChunk, { onConflict: 'url' });
+          } else {
+            console.error('Supabase upsert error:', upsertErr.message);
+          }
+        }
+      }
+      console.log('✅ Successfully stored items in Supabase.');
+    }
   }
 
   // Always write local cache fallback

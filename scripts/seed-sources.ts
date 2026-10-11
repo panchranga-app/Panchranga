@@ -38,9 +38,22 @@ async function seed() {
   if (supabaseUrl && supabaseKey) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Upsert active modern sources (match by name if existing to allow feed_url updates)
-    for (const src of STARTER_SOURCES) {
-      const payload: any = {
+    // Fetch all existing sources in 1 query instead of 185 individual queries
+    const { data: existingSources } = await supabase
+      .from('sources')
+      .select('id, name, feed_url, is_active');
+
+    const byName = new Map<string, any>();
+    const byUrl = new Map<string, any>();
+    for (const row of existingSources || []) {
+      byName.set(row.name, row);
+      byUrl.set(row.feed_url, row);
+    }
+
+    // 1. Batch upsert active sources
+    const payloads = STARTER_SOURCES.map((src) => {
+      const match = byName.get(src.name) || byUrl.get(src.feed_url);
+      const item: any = {
         name: src.name,
         lane: src.lane,
         type: src.type,
@@ -49,51 +62,55 @@ async function seed() {
         region: src.region,
         is_active: true,
       };
+      if (match?.id) {
+        item.id = match.id;
+      }
+      return item;
+    });
 
-      const { data: existing } = await supabase
-        .from('sources')
-        .select('id, feed_url')
-        .eq('name', src.name)
-        .maybeSingle();
+    const withId = payloads.filter((p) => Boolean(p.id));
+    const withoutId = payloads.filter((p) => !p.id);
 
-      if (existing) {
-        const { error } = await supabase
-          .from('sources')
-          .update(payload)
-          .eq('id', existing.id);
-        if (error) {
-          console.error(`❌ Failed updating ${src.name}:`, error.message);
-        } else {
-          console.log(`✅ Updated source: ${src.name} [${src.lane.toUpperCase()}] (${src.language})`);
-        }
+    if (withId.length > 0) {
+      const { error } = await supabase.from('sources').upsert(withId, { onConflict: 'id' });
+      if (error) {
+        console.warn('⚠️ Batch update existing sources warning:', error.message);
       } else {
-        const { error } = await supabase
-          .from('sources')
-          .upsert(payload, { onConflict: 'feed_url' });
-        if (error) {
-          if (error.message?.includes('sources_lane_check') || error.message?.includes('sources_type_check')) {
-            console.warn(`⚠️ Note for ${src.name}: Supabase check constraint migration needed for '${src.lane}'/'${src.type}' (run scripts/schema.sql in Supabase SQL editor). Saved to local registry.`);
-          } else {
-            console.error(`❌ Failed inserting ${src.name}:`, error.message);
-          }
-        } else {
-          console.log(`✅ Inserted source: ${src.name} [${src.lane.toUpperCase()}] (${src.language})`);
-        }
+        console.log(`✅ Batch updated ${withId.length} existing sources.`);
       }
     }
 
-    // 2. Deactivate any obsolete or discontinued sources in DB
-    const activeNames = STARTER_SOURCES.map((s) => s.name);
-    const { data: existingSources } = await supabase.from('sources').select('id, name, is_active');
-    if (existingSources && existingSources.length > 0) {
-      const toDeactivate = existingSources.filter((s) => !activeNames.includes(s.name) && s.is_active);
-      if (toDeactivate.length > 0) {
-        console.log(`🧹 Deactivating ${toDeactivate.length} discontinued/dead sources...`);
-        for (const dead of toDeactivate) {
-          await supabase.from('sources').update({ is_active: false }).eq('id', dead.id);
-          console.log(`  ↪ Deactivated: ${dead.name}`);
+    if (withoutId.length > 0) {
+      const { error } = await supabase.from('sources').upsert(withoutId, { onConflict: 'feed_url' });
+      if (error) {
+        if (error.message?.includes('sources_type_check')) {
+          const compatBatch = withoutId.map((p) => ({
+            ...p,
+            type: p.lane === 'aggregator' ? p.type : 'rss',
+          }));
+          const { error: retryErr } = await supabase.from('sources').upsert(compatBatch, { onConflict: 'feed_url' });
+          if (!retryErr) {
+            console.log(`✅ Batch inserted ${compatBatch.length} new sources (compat mode).`);
+          } else {
+            console.warn('⚠️ Batch insert compat warning:', retryErr.message);
+          }
+        } else {
+          console.warn('⚠️ Batch insert new sources warning:', error.message);
         }
+      } else {
+        console.log(`✅ Batch inserted ${withoutId.length} new sources.`);
       }
+    }
+
+    // 2. Deactivate any obsolete or discontinued sources in DB in a single batch call
+    const activeNames = new Set(STARTER_SOURCES.map((s) => s.name));
+    const toDeactivateIds = (existingSources || [])
+      .filter((s) => !activeNames.has(s.name) && s.is_active)
+      .map((s) => s.id);
+
+    if (toDeactivateIds.length > 0) {
+      console.log(`🧹 Deactivating ${toDeactivateIds.length} discontinued/dead sources...`);
+      await supabase.from('sources').update({ is_active: false }).in('id', toDeactivateIds);
     }
   }
 

@@ -38,7 +38,7 @@ async function runSummarization() {
 
     const { data: dbItems } = await supabase
       .from('raw_items')
-      .select('*, source:sources(*)')
+      .select('id, title, url, published_at, raw_summary, og_description, cluster_id, source:sources(id, name, lane, language, region)')
       .gte('published_at', cutoffDate);
 
     if (dbHubs && dbHubs.length > 0) {
@@ -132,7 +132,7 @@ async function runSummarization() {
     const hubsWithSummary = hubs.filter((h) => Boolean(h.ai_summary));
     console.log(`\n💾 Upserting ${hubsWithSummary.length} topic hubs with AI summaries to Supabase in batches...`);
 
-    const chunkSize = 50;
+    const chunkSize = 150;
     for (let i = 0; i < hubsWithSummary.length; i += chunkSize) {
       const chunk = hubsWithSummary.slice(i, i + chunkSize).map((hub) => ({
         id: hub.id,

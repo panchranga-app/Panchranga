@@ -49,7 +49,7 @@ export default function AboutPage() {
               Mainstream Media
             </h3>
             <p className="text-xs text-[#555] leading-relaxed">
-              Leading national daily newspapers, established broadcasters, and official government press channels (e.g. Indian Express, NDTV, Times of India, PIB).
+              Leading national daily newspapers, established broadcasters, and official government press channels (e.g. The Hindu, Indian Express, NDTV, Times of India, PIB).
             </p>
             <p className="text-[11px] text-[#6B6B6B] italic pt-1">
               Focus: Institutional record, press statements, and national headline reach.
@@ -66,7 +66,7 @@ export default function AboutPage() {
               Grassroots & Regional
             </h3>
             <p className="text-xs text-[#555] leading-relaxed">
-              Independent newsrooms, investigative outlets, and local language regional media (e.g. The Wire, Scroll.in, Maktoob Media, Newsclick, PARI).
+              Independent newsrooms, ground-report collectives, investigative outlets, and regional media (e.g. Jist, Peek TV, The Wire, Scroll.in, LiveLaw, Mongabay India, PARI).
             </p>
             <p className="text-[11px] text-[#6B6B6B] italic pt-1">
               Focus: Ground-level impacts, labor, marginalized communities, and regional investigation.
@@ -83,7 +83,7 @@ export default function AboutPage() {
               Public Discourse
             </h3>
             <p className="text-xs text-[#555] leading-relaxed">
-              Real-time civic reactions, online community threads, and public debate from active forums and discussions (e.g. Reddit communities, civic threads).
+              Real-time civic reactions, online community threads, and independent policy explainers (e.g. Reddit communities, Youth Ki Awaaz, Unfiltered by Samdish, Soch).
             </p>
             <p className="text-[11px] text-[#6B6B6B] italic pt-1">
               Focus: Grassroots civic sentiment, citizen reactions, and unfiltered community dialogue.
@@ -105,7 +105,7 @@ export default function AboutPage() {
             Rather than relying on human editors or rigid keyword tags, Panchranga uses automated semantic machine learning to group related articles into coherent <strong>Topic Hubs</strong>.
           </p>
           <p>
-            When articles are fetched from our 65+ active sources, each headline and excerpt is passed through a lightweight text-embedding model (MiniLM-L6). This model converts text into a 384-dimensional mathematical vector representing its underlying conceptual meaning.
+            When articles and video reports are fetched from our 185+ active sources across 13 Indian languages, each headline and excerpt is passed through our multilingual 384-dimensional vector embedding engine.
           </p>
           <p>
             Our pipeline calculates the <strong>cosine similarity</strong> between new articles and active clusters within a rolling time window. If an article shares strong mathematical similarity with an ongoing event, it is automatically attached to that topic hub — regardless of whether different publications use completely different phrasing or report in English or regional languages.

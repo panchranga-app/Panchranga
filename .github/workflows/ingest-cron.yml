@@ -2,8 +2,8 @@ name: Panchranga Scheduled Ingestion & Clustering Pipeline
 
 on:
   schedule:
-    # Run every 20 minutes
-    - cron: '*/20 * * * *'
+    # Run every 30 minutes (48 runs/day to conserve Supabase Egress & Log Ingestion quotas)
+    - cron: '*/30 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 concurrency:
@@ -26,7 +26,27 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Panchranga Pipeline
+      - name: Cache API Anything Package
+        id: cache-api-anything
+        uses: actions/cache@v4
+        with:
+          path: /tmp/api-anything-pkg
+          key: api-anything-v1-${{ runner.os }}
+
+      - name: Setup API Anything CLI
+        run: |
+          if [ ! -f /tmp/api-anything-pkg/api-anything.tgz ]; then
+            mkdir -p /tmp/api-anything-pkg
+            git clone -q --depth 1 https://github.com/goodnight000/api-anything.git /tmp/api-anything-src
+            cd /tmp/api-anything-src
+            npm ci --no-audit --no-fund
+            archive="$(npm pack --silent)"
+            mv "$archive" /tmp/api-anything-pkg/api-anything.tgz
+          fi
+          npm install -g /tmp/api-anything-pkg/api-anything.tgz
+          api-anything --help
+
+      - name: Sync Sources & Run Panchranga Pipeline
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -36,4 +56,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: npm run pipeline
+        run: npm run seed && npm run pipeline

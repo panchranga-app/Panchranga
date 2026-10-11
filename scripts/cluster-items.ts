@@ -5,7 +5,6 @@ if (typeof (globalThis as any).WebSocket === 'undefined') {
 
 import fs from 'fs';
 import path from 'path';
-import pLimit from 'p-limit';
 import { generateEmbedding } from '../lib/embeddings';
 import { clusterRawItems, SIMILARITY_THRESHOLD } from '../lib/clustering';
 import { RawItem, TopicHub } from '../lib/types';
@@ -29,23 +28,20 @@ async function runClustering() {
 
   const cutoffDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
-  const initialClusterMap = new Map<string, { clusterId?: string | null; hasEmbedding: boolean }>();
+  const initialClusterMap = new Map<string, string | null>();
 
   if (isConfigured) {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
-    // Cluster recent items from the last 48 hours to maintain fast, fresh topic hubs
+    // Cluster recent items from the last 48 hours (omit heavy 384-float embedding column to save Egress)
     const { data: dbItems } = await supabase
       .from('raw_items')
-      .select('*, source:sources(*)')
+      .select('id, source_id, title, url, published_at, raw_summary, og_image, og_description, category, cluster_id, fetched_at, source:sources(id, name, lane, type, language, region)')
       .gte('published_at', cutoffDate)
       .order('published_at', { ascending: false });
     if (dbItems) {
       rawItems = dbItems as any;
       for (const item of rawItems) {
-        initialClusterMap.set(item.url, {
-          clusterId: item.cluster_id,
-          hasEmbedding: Boolean(item.embedding && Array.isArray(item.embedding) && item.embedding.length > 0),
-        });
+        initialClusterMap.set(item.url, item.cluster_id || null);
       }
     }
   } else {
@@ -124,8 +120,9 @@ async function runClustering() {
       .from('topic_hubs')
       .select('title, ai_summary')
       .not('ai_summary', 'is', null)
+      .gte('last_updated_at', cutoffDate)
       .order('last_updated_at', { ascending: false })
-      .limit(1000);
+      .limit(500);
     if (existingHubs) {
       for (const h of existingHubs) {
         if (h.ai_summary && isValidAiSummary(h.ai_summary)) {
@@ -158,8 +155,8 @@ async function runClustering() {
     const supabase = createClient(supabaseUrl!, supabaseKey!);
     console.log('💾 Syncing topic hubs and cluster IDs to Supabase Postgres...');
     
-    // Batch upsert hubs in chunks of 50
-    const chunkSize = 50;
+    // Batch upsert hubs in chunks of 150
+    const chunkSize = 150;
     for (let i = 0; i < hubs.length; i += chunkSize) {
       const chunk = hubs.slice(i, i + chunkSize).map((hub) => ({
         id: hub.id,
@@ -173,50 +170,60 @@ async function runClustering() {
       if (error) console.error('⚠️ Error upserting topic hubs chunk:', error);
     }
 
-    // Update cluster_ids and embeddings on raw_items only where changed
+    // Batch update cluster_ids on raw_items (omitting 384-dim embedding from DB to save ~65% storage & egress)
     const itemsToUpdate = clusteredItems.filter((item) => {
       if (!item.cluster_id) return false;
-      const prev = initialClusterMap.get(item.url);
-      if (!prev) return true;
-      return prev.clusterId !== item.cluster_id || !prev.hasEmbedding;
+      const prevClusterId = initialClusterMap.get(item.url);
+      return prevClusterId !== item.cluster_id;
     });
 
-    console.log(`💾 Syncing cluster IDs and embeddings for ${itemsToUpdate.length} modified items (${clusteredItems.length - itemsToUpdate.length} unchanged)...`);
-    const updateLimit = pLimit(15);
-    const updatePromises = itemsToUpdate.map((item) =>
-      updateLimit(async () => {
-        await supabase
-          .from('raw_items')
-          .update({ cluster_id: item.cluster_id, embedding: item.embedding || null })
-          .eq('url', item.url);
-      })
-    );
-    await Promise.all(updatePromises);
+    console.log(`💾 Syncing cluster IDs for ${itemsToUpdate.length} modified items (${clusteredItems.length - itemsToUpdate.length} unchanged) in batches...`);
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uniqueUpdates = Array.from(new Map(itemsToUpdate.map((item) => [item.url, item])).values());
+    for (let i = 0; i < uniqueUpdates.length; i += chunkSize) {
+      const batch = uniqueUpdates.slice(i, i + chunkSize).map((item) => ({
+        source_id: (item.source_id && uuidRegex.test(item.source_id)) ? item.source_id : null,
+        title: item.title,
+        url: item.url,
+        published_at: item.published_at,
+        raw_summary: item.raw_summary,
+        category: item.category,
+        og_image: item.og_image,
+        og_description: item.og_description,
+        cluster_id: item.cluster_id,
+        embedding: null,
+        fetched_at: item.fetched_at,
+      }));
+      const { error: batchErr } = await supabase.from('raw_items').upsert(batch, { onConflict: 'url' });
+      if (batchErr) {
+        console.warn(`⚠️ Batch cluster_id upsert warning [${i}-${i + batch.length}]:`, batchErr.message);
+      }
+    }
 
-    // Clean up superseded/orphaned topic hubs from previous runs
-    const currentRunHubIds = new Set(hubs.map((h) => h.id));
-    const [{ data: recentDbHubs }, { data: oldDbHubs }] = await Promise.all([
-      supabase
-        .from('topic_hubs')
-        .select('id')
-        .gte('last_updated_at', cutoffDate)
-        .order('last_updated_at', { ascending: false })
-        .limit(2000),
-      supabase
-        .from('topic_hubs')
-        .select('id')
-        .lt('last_updated_at', cutoffDate)
-        .order('last_updated_at', { ascending: true })
-        .limit(1000),
+    // Automatic 72-Hour Retention Pruning (prevents raw_items and topic_hubs from growing unbounded)
+    const retentionCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const [{ error: oldItemsDelErr }, { error: oldHubsDelErr }] = await Promise.all([
+      supabase.from('raw_items').delete().lt('published_at', retentionCutoff),
+      supabase.from('topic_hubs').delete().lt('last_updated_at', retentionCutoff),
     ]);
+    if (oldItemsDelErr) console.warn('⚠️ 72h raw_items retention prune warning:', oldItemsDelErr.message);
+    if (oldHubsDelErr) console.warn('⚠️ 72h topic_hubs retention prune warning:', oldHubsDelErr.message);
 
-    const orphanIds = [
-      ...(recentDbHubs || []).filter((h) => !currentRunHubIds.has(h.id)).map((h) => h.id),
-      ...(oldDbHubs || []).filter((h) => !currentRunHubIds.has(h.id)).map((h) => h.id),
-    ];
+    // Clean up any superseded topic hubs within the active window
+    const currentRunHubIds = new Set(hubs.map((h) => h.id));
+    const { data: recentDbHubs } = await supabase
+      .from('topic_hubs')
+      .select('id')
+      .gte('last_updated_at', retentionCutoff)
+      .order('last_updated_at', { ascending: false })
+      .limit(1500);
+
+    const orphanIds = (recentDbHubs || [])
+      .filter((h) => !currentRunHubIds.has(h.id))
+      .map((h) => h.id);
 
     if (orphanIds.length > 0) {
-      console.log(`🧹 Found ${orphanIds.length} superseded/stale topic hubs to clean up...`);
+      console.log(`🧹 Found ${orphanIds.length} superseded topic hubs in active window to clean up...`);
       let deletedCount = 0;
       const deleteBatchSize = 200;
       for (let i = 0; i < orphanIds.length; i += deleteBatchSize) {
@@ -231,7 +238,7 @@ async function runClustering() {
       console.log(`🧹 Cleaned up ${deletedCount}/${orphanIds.length} superseded topic hubs from database.`);
     }
 
-    console.log('✅ Supabase database sync complete.');
+    console.log('✅ Supabase database sync & 72h retention pruning complete.');
   }
 
   // Always write local cache (stripping heavy 384-float embeddings from hub items to keep JSON compact)

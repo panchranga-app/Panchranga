@@ -9,9 +9,23 @@ import { resolveHubTimestamps } from '@/lib/utils';
 
 import { supabase } from '@/lib/supabase/client';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
+
+const HOMEPAGE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let cachedClusteredData: {
+  hubs: TopicHub[];
+  rawItems: RawItem[];
+  expiresAt: number;
+} | null = null;
 
 async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem[] }> {
+  if (cachedClusteredData && Date.now() < cachedClusteredData.expiresAt) {
+    return {
+      hubs: cachedClusteredData.hubs,
+      rawItems: cachedClusteredData.rawItems,
+    };
+  }
+
   // Helper to read local JSON files safely
   const readLocalFallback = (): { hubs: TopicHub[]; rawItems: RawItem[] } => {
     try {
@@ -187,6 +201,11 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
           .filter((hub: TopicHub) => hub.items && hub.items.length > 0);
 
         if (hubsWithItems.length > 0) {
+          cachedClusteredData = {
+            hubs: hubsWithItems,
+            rawItems: normalizedDbItems,
+            expiresAt: Date.now() + HOMEPAGE_CACHE_TTL_MS,
+          };
           return { hubs: hubsWithItems, rawItems: normalizedDbItems };
         }
 
@@ -201,6 +220,11 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
             item_count: 1,
             items: [item],
           }));
+          cachedClusteredData = {
+            hubs: syntheticHubs,
+            rawItems: normalizedDbItems,
+            expiresAt: Date.now() + HOMEPAGE_CACHE_TTL_MS,
+          };
           return { hubs: syntheticHubs, rawItems: normalizedDbItems };
         }
       }
@@ -210,7 +234,14 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
   }
 
   // 2. Fallback to local JSON files
-  return readLocalFallback();
+  const fallbackResult = readLocalFallback();
+  if (fallbackResult.hubs.length > 0) {
+    cachedClusteredData = {
+      ...fallbackResult,
+      expiresAt: Date.now() + 60 * 1000,
+    };
+  }
+  return fallbackResult;
 }
 
 export default async function HomePage({
@@ -327,7 +358,7 @@ export default async function HomePage({
   const gridHubs = processedHubs.length > 1 ? processedHubs.slice(1) : processedHubs;
 
   // Extract Fact Check Items
-  const factCheckNames = ['alt news', 'boom', 'newschecker', 'factly'];
+  const factCheckNames = ['alt news', 'boom', 'newschecker', 'factly', 'factcrescendo', 'vishvas', 'thip'];
   let factCheckItems: FactCheckItem[] = rawItems
     .filter((item) => {
       const sName = (item.sources?.name || item.source?.name || item.source_name || '').toLowerCase();

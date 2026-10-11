@@ -65,8 +65,9 @@ begin
   end if;
 end $$;
 
--- Indexes for efficient querying & similarity lookup
-create index if not exists idx_raw_items_url on raw_items(url);
+-- Indexes for efficient querying & retention pruning
+drop index if exists idx_raw_items_url; -- redundant with raw_items_url_key unique constraint
+create index if not exists idx_raw_items_published on raw_items(published_at desc);
 create index if not exists idx_raw_items_category on raw_items(category);
 create index if not exists idx_raw_items_cluster on raw_items(cluster_id);
 create index if not exists idx_sources_lane on sources(lane);

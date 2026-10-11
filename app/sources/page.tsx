@@ -3,7 +3,7 @@ import path from 'path';
 import { STARTER_SOURCES } from '@/lib/constants';
 import { supabase } from '@/lib/supabase/client';
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 interface SourceItem {
   id?: string;
@@ -19,7 +19,23 @@ interface SourceItem {
 }
 
 async function getSources(): Promise<SourceItem[]> {
-  let sources: SourceItem[] = [];
+  let localSources: SourceItem[] = [];
+  const localCountByName = new Map<string, number>();
+
+  try {
+    const sourcesPath = path.resolve(process.cwd(), 'data', 'sources.json');
+    if (fs.existsSync(sourcesPath)) {
+      const parsed: SourceItem[] = JSON.parse(fs.readFileSync(sourcesPath, 'utf-8'));
+      localSources = parsed.filter((s) => s.is_active !== false);
+      for (const s of localSources) {
+        if (typeof s.article_count === 'number') {
+          localCountByName.set(s.name, s.article_count);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error reading fallback sources.json:', err);
+  }
 
   if (supabase) {
     try {
@@ -31,28 +47,10 @@ async function getSources(): Promise<SourceItem[]> {
         .order('name');
 
       if (!error && data && data.length > 0) {
-        sources = data as SourceItem[];
-
-        // Try getting article counts per source
-        try {
-          const { data: items } = await supabase.from('raw_items').select('source_id').limit(10000);
-          if (items && items.length > 0) {
-            const countMap: Record<string, number> = {};
-            for (const it of items) {
-              if (it.source_id) {
-                countMap[it.source_id] = (countMap[it.source_id] || 0) + 1;
-              }
-            }
-            sources = sources.map((s) => ({
-              ...s,
-              article_count: s.id ? countMap[s.id] || 0 : 0,
-            }));
-          }
-        } catch {
-          // Ignore count error
-        }
-
-        return sources;
+        return (data as SourceItem[]).map((s) => ({
+          ...s,
+          article_count: localCountByName.get(s.name) ?? s.article_count,
+        }));
       }
       if (error) {
         console.warn('Supabase sources query error:', error);
@@ -62,18 +60,8 @@ async function getSources(): Promise<SourceItem[]> {
     }
   }
 
-  // Fallback to data/sources.json
-  try {
-    const sourcesPath = path.resolve(process.cwd(), 'data', 'sources.json');
-    if (fs.existsSync(sourcesPath)) {
-      const parsed: SourceItem[] = JSON.parse(fs.readFileSync(sourcesPath, 'utf-8'));
-      const active = parsed.filter((s) => s.is_active !== false);
-      if (active.length > 0) {
-        return active;
-      }
-    }
-  } catch (err) {
-    console.error('Error reading fallback sources.json:', err);
+  if (localSources.length > 0) {
+    return localSources;
   }
 
   return STARTER_SOURCES.map((s) => ({ ...s, is_active: true })) as SourceItem[];
