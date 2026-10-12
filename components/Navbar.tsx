@@ -146,6 +146,16 @@ export default function Navbar({
             About
           </Link>
           <button
+            onClick={() => handleTrendingClick('Protests')}
+            className={`py-1 transition-colors ${
+              qFromUrl.toLowerCase() === 'protests' || activeTopic.toLowerCase() === 'protests'
+                ? 'border-b-2 border-[#C0392B] font-semibold'
+                : 'hover:text-[#C0392B]'
+            }`}
+          >
+            Protests
+          </button>
+          <button
             onClick={() => handleTrendingClick('Fact Check')}
             className="py-1 hover:text-[#C0392B] transition-colors"
           >

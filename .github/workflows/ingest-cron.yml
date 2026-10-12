@@ -26,6 +26,34 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Send Daily Newsletter (Sharp 7:00 AM IST via workflow_dispatch)
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app' }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_DAILY_LIMIT: ${{ secrets.GMAIL_DAILY_LIMIT }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+          BREVO_DAILY_LIMIT: ${{ secrets.BREVO_DAILY_LIMIT }}
+          BREVO_ENABLED: ${{ secrets.BREVO_ENABLED }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_DAILY_LIMIT: ${{ secrets.RESEND_DAILY_LIMIT }}
+          EMAIL_PROVIDER_ORDER: ${{ secrets.EMAIL_PROVIDER_ORDER }}
+        run: |
+          IST_HOUR=$(TZ="Asia/Kolkata" date +%-H)
+          if [ "$IST_HOUR" -ge 7 ]; then
+            echo "⏰ Current IST hour is $IST_HOUR (>= 7 AM IST). Running idempotent daily newsletter check..."
+            npm run send-newsletter
+          else
+            echo "⏳ Current IST hour is $IST_HOUR (< 7 AM IST). Skipping daily newsletter until 7:00 AM IST."
+          fi
+
       - name: Cache API Anything Package
         id: cache-api-anything
         uses: actions/cache@v4

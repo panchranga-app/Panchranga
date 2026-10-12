@@ -254,7 +254,74 @@ async function runTests() {
     console.log('✅ Test 6 passed: Map-Reduce chunking splits long documents into chunk summaries + final merge.');
   }
 
-  console.log('\n🎉 All 6 LLM Quota-Aware Router test suites passed!');
+  // 7. Protest Filter Detection & Non-Training Provider Routing (isSensitive: true)
+  {
+    const { checkProtestFilter, generateNeutralSummary } = await import('../../lib/summarizer');
+    resetRouterStateForTests();
+
+    const protestHub = {
+      id: 'hub-protest-1',
+      title: 'Farmers stage dharna and protest march at Singhu border',
+      first_seen_at: new Date().toISOString(),
+      last_updated_at: new Date().toISOString(),
+      item_count: 2,
+      items: [
+        {
+          id: 'item-1',
+          source_id: 'src-1',
+          title: 'Farmers stage dharna and protest march at Singhu border',
+          url: 'https://example.com/1',
+          published_at: new Date().toISOString(),
+          raw_summary: 'Thousands of farmers gathered at the highway border demanding MSP guarantees.',
+          fetched_at: new Date().toISOString(),
+        },
+        {
+          id: 'item-2',
+          source_id: 'src-2',
+          title: 'मांगों को लेकर किसानों का जोरदार विरोध प्रदर्शन',
+          url: 'https://example.com/2',
+          published_at: new Date().toISOString(),
+          raw_summary: 'Police deployed barricades across entry points.',
+          fetched_at: new Date().toISOString(),
+        },
+      ],
+    };
+
+    const nonProtestHub = {
+      id: 'hub-economy-1',
+      title: 'Bandhan Bank announces quarterly results in Kolkata',
+      first_seen_at: new Date().toISOString(),
+      last_updated_at: new Date().toISOString(),
+      item_count: 1,
+      items: [],
+    };
+
+    assert.strictEqual(checkProtestFilter(protestHub), true, 'Should detect protest hub via English and Hindi keywords');
+    assert.strictEqual(checkProtestFilter(nonProtestHub), false, 'Should not false-positive on Bandhan Bank');
+
+    // Exhaust Groq and Cloudflare so only Gemini & OpenRouter have quota left;
+    // since protest hubs set isSensitive: true, Gemini & OpenRouter must be skipped and the job queued!
+    const state = loadQuotaState();
+    for (const [k, cfg] of Object.entries(VERIFIED_LLM_CONFIG)) {
+      if (cfg.provider === 'groq' || cfg.provider === 'cloudflare') {
+        state.buckets[k].requestsToday = cfg.limits.rpd.operationalCeiling;
+      }
+    }
+
+    let calledNonAllowedProvider = false;
+    const mockFetch: typeof fetch = async () => {
+      calledNonAllowedProvider = true;
+      return createJsonResponse(200, {});
+    };
+
+    const summaryRes = await generateNeutralSummary(protestHub, { fetchImpl: mockFetch });
+    assert.strictEqual(summaryRes.isProtest, true, 'SummaryResult should mark isProtest: true');
+    assert.strictEqual(summaryRes.queued, true, 'Should queue instead of routing protest hub to Gemini/OpenRouter');
+    assert.strictEqual(calledNonAllowedProvider, false, 'Must never call Gemini or OpenRouter for protest hubs');
+    console.log('✅ Test 7 passed: Protest filter marks protest stories as isSensitive: true and blocks training providers.');
+  }
+
+  console.log('\n🎉 All 7 LLM Quota-Aware Router test suites passed!');
 }
 
 runTests().catch((err) => {

@@ -1,5 +1,6 @@
 export const TOPIC_SECTIONS = [
   'Politics',
+  'Protests',
   'Courts & Law',
   'Economy',
   'Environment',
@@ -30,6 +31,34 @@ export const TOPIC_KEYWORDS: Record<string, string[]> = {
     'box office', 'trailer', 'teaser', 'casting', 'director', 'celebrity', 'ott', 'netflix',
     'prime video', 'song', 'album', 'singer', 'starring', 'soundtrack', 'cinematography',
     'दंगल', 'सिनेमा', 'फिल्म', 'अभिनेता', 'अभिनेत्री', 'ट्रेलर', 'गाना'
+  ],
+  Protests: [
+    // English
+    'protest', 'protests', 'protester', 'protesters', 'protesting',
+    'demonstration', 'demonstrators', 'agitation', 'agitators',
+    'dharna', 'bandh', 'bharat bandh', 'chakka jam', 'gherao', 'hartal',
+    'morcha', 'padayatra', 'hunger strike', 'fast unto death', 'sit-in',
+    'tear gas', 'lathi charge', 'lathicharge', 'water cannon',
+    'road blockade', 'rail roko', 'rasta roko',
+    // Hindi
+    'प्रदर्शन', 'विरोध प्रदर्शन', 'प्रदर्शनकारी', 'आंदोलन', 'धरना',
+    'चक्का जाम', 'भारत बंद', 'घेराव', 'हड़ताल', 'भूख हड़ताल', 'अनशन', 'लाठीचार्ज', 'मोर्चा',
+    // Marathi
+    'उपोषण', 'ठिय्या', 'रास्ता रोको', 'निदर्शने', 'धरणे',
+    // Tamil
+    'போராட்டம்', 'ஆர்ப்பாட்டம்', 'முற்றுகை', 'உண்ணாவிரதம்', 'மறியல்', 'பந்த்',
+    // Telugu
+    'నిరసన', 'ఆందోళన', 'ధర్నా', 'బంద్', 'రాస్తారోకో', 'దీక్ష',
+    // Kannada
+    'ಪ್ರತಿಭಟನೆ', 'ಧರಣಿ', 'ಬಂದ್', 'ಮುಷ್ಕರ', 'ಹೋರಾಟ',
+    // Malayalam
+    'പ്രതിഷേധം', 'സമരം', 'ഹർത്താൽ', 'ധർണ്ണ', 'ബന്ദ്', 'ഉപരോധം',
+    // Gujarati
+    'આંદોલન', 'ધરણા', 'દેખાવો',
+    // Bengali
+    'বিক্ষোভ', 'আন্দোলন', 'ধর্ণা', 'বনধ', 'ধর্মঘট', 'অবরোধ',
+    // Punjabi
+    'ਪ੍ਰਦਰਸ਼ਨ', 'ਧਰਨਾ', 'ਅੰਦੋਲਨ', 'ਮੋਰਚਾ'
   ],
   'Courts & Law': [
     'court', 'judge', 'verdict', 'fir', 'police', 'cbi', 'ed',
@@ -107,7 +136,7 @@ export const TOPIC_KEYWORDS: Record<string, string[]> = {
 
 // Isolated list of short or sensitive English keywords requiring strict word boundary match
 const BOUNDARY_KEYWORDS = new Set([
-  'up', 'ed', 'sc', 'ai', 'rbi', 'gdp', 'bjp', 'aap', 'fir', 'who', 'gst', 't20', 'odi', 'cbi', 'mla', 'mp', 'tech', 'chip', 'tax', 'bank'
+  'up', 'ed', 'sc', 'ai', 'rbi', 'gdp', 'bjp', 'aap', 'fir', 'who', 'gst', 't20', 'odi', 'cbi', 'mla', 'mp', 'tech', 'chip', 'tax', 'bank', 'bandh'
 ]);
 
 function matchesKeyword(text: string, kw: string): boolean {

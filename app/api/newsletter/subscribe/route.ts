@@ -37,13 +37,16 @@ export async function POST(req: Request) {
     // Check if already subscribed
     const { data: existing, error: selectErr } = await supabase
       .from('newsletter_subscribers')
-      .select('id, is_active')
+      .select('id, is_active, unsubscribe_token')
       .eq('email', cleanEmail)
       .maybeSingle();
 
     if (selectErr) {
       console.error('[SUBSCRIBE] Error querying existing subscriber:', selectErr);
     }
+
+    let unsubscribeToken: string | undefined = existing?.unsubscribe_token;
+    let responseMessage: 'subscribed' | 'resubscribed' = 'subscribed';
 
     if (existing) {
       if (existing.is_active) {
@@ -59,45 +62,56 @@ export async function POST(req: Request) {
           .eq('email', cleanEmail);
 
         if (updateErr) throw updateErr;
-
-        return NextResponse.json(
-          { message: 'resubscribed' },
-          { status: 200 }
-        );
+        responseMessage = 'resubscribed';
       }
-    }
+    } else {
+      // Insert new subscriber
+      const { data: inserted, error: insertErr } = await supabase
+        .from('newsletter_subscribers')
+        .insert({
+          email: cleanEmail,
+          source: 'website',
+        })
+        .select('unsubscribe_token')
+        .maybeSingle();
 
-    // Insert new subscriber
-    const { error: insertErr } = await supabase
-      .from('newsletter_subscribers')
-      .insert({
-        email: cleanEmail,
-        source: 'website'
-      });
-
-    if (insertErr) {
-      console.error('[SUBSCRIBE] Error inserting subscriber:', insertErr);
-      throw insertErr;
+      if (insertErr) {
+        console.error('[SUBSCRIBE] Error inserting subscriber:', insertErr);
+        throw insertErr;
+      }
+      unsubscribeToken = inserted?.unsubscribe_token;
     }
 
     // Send welcome email directly using provider abstraction
+    let emailSent = false;
+    let emailError: string | undefined;
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
       const welcomeHtml = buildWelcomeEmailHTML(siteUrl);
-      await sendTransactionalEmail(
-        { email: cleanEmail },
+      const sendRes = await sendTransactionalEmail(
+        { email: cleanEmail, unsubscribeToken },
         {
           subject: 'Welcome to Panchranga 🗞️',
           html: welcomeHtml,
         }
       );
-    } catch (welcomeErr) {
+      emailSent = sendRes.ok;
+      if (!sendRes.ok) {
+        emailError = sendRes.error;
+        console.error('[SUBSCRIBE] Welcome email failed to send:', sendRes.error);
+      }
+    } catch (welcomeErr: any) {
+      emailError = welcomeErr?.message || String(welcomeErr);
       console.warn('[SUBSCRIBE] Welcome email dispatch warning:', welcomeErr);
     }
 
     return NextResponse.json(
-      { message: 'subscribed' },
-      { status: 201 }
+      {
+        message: responseMessage,
+        emailSent,
+        ...(emailError ? { emailError } : {}),
+      },
+      { status: responseMessage === 'subscribed' ? 201 : 200 }
     );
 
   } catch (error: any) {

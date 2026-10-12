@@ -58,6 +58,12 @@ export const EVAL_HEADLINES: EvalHeadline[] = [
 
   // 10. Fact-Check
   { title: "Viral video claiming EVM machines were altered in recent elections is false and debunked", expectedCategory: "Fact-Check", sourceName: "Alt News" },
+
+  // 11. Protests (English & Regional Languages, avoiding false matches on 'Bandhan Bank')
+  { title: "Farmers stage massive protest march and chakka jam at Delhi border demanding MSP law", expectedCategory: "Protests" },
+  { title: "मांगों को लेकर किसानों का दिल्ली बॉर्डर पर जोरदार धरना और विरोध प्रदर्शन", expectedCategory: "Protests" },
+  { title: "मराठा आरक्षणासाठी जरांगे पाटलांचे बेमुदत उपोषण आणि भव्य मोर्चा", expectedCategory: "Protests" },
+  { title: "Bandhan Bank Q3 net profit rises 18 percent on strong retail loan growth", expectedCategory: "Economy" },
 ];
 
 function runTest() {

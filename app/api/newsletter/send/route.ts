@@ -5,9 +5,13 @@ export const dynamic = 'force-dynamic';
 
 function validateRequest(req: Request) {
   const authHeader = req.headers.get('authorization');
-  const expectedKey = process.env.NEWSLETTER_SECRET_KEY || process.env.CRON_SECRET;
-  if (!expectedKey) return false;
-  return authHeader === `Bearer ${expectedKey}`;
+  if (!authHeader) return false;
+  const validKeys = [
+    process.env.NEWSLETTER_SECRET_KEY,
+    process.env.CRON_SECRET,
+  ].filter(Boolean);
+  if (validKeys.length === 0) return false;
+  return validKeys.some((key) => authHeader === `Bearer ${key}`);
 }
 
 export async function GET(req: Request) {
@@ -20,10 +24,12 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const dryRun = url.searchParams.get('dryRun') === 'true';
+  const force = url.searchParams.get('force') === 'true';
 
   try {
     const result = await sendDailyNewsletter({
       dryRun,
+      force,
     });
 
     return NextResponse.json({
@@ -53,7 +59,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { dryRun?: boolean; testRecipients?: string[] } = {};
+  let body: { dryRun?: boolean; force?: boolean; testRecipients?: string[] } = {};
   try {
     body = await req.json();
   } catch {
@@ -63,6 +69,7 @@ export async function POST(req: Request) {
   try {
     const result = await sendDailyNewsletter({
       dryRun: body.dryRun,
+      force: body.force,
       testRecipients: body.testRecipients,
     });
 

@@ -7,6 +7,7 @@ import PanchrangaLoader from './PanchrangaLoader';
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('Subscribed! ✓');
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -19,7 +20,13 @@ export default function Footer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        if (data.message === 'already_subscribed') {
+          setStatusMessage("You're already subscribed! 🎉");
+        } else {
+          setStatusMessage('Subscribed! ✓');
+        }
         setSubscribed(true);
       }
     } catch (err) {
@@ -87,7 +94,7 @@ export default function Footer() {
               <h4 className="text-white font-bold text-base mb-2">Daily Newsletter</h4>
               {subscribed ? (
                 <div className="text-[#10B981] font-semibold text-sm py-2">
-                  Subscribed! ✓
+                  {statusMessage}
                 </div>
               ) : (
                 <form onSubmit={handleSubscribe} className="space-y-1.5">

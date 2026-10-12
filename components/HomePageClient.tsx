@@ -182,9 +182,10 @@ export default function HomePageClient({
         if (topic.includes(q) || q.includes(topic)) return true;
 
         // Topic keywords matching
+        const searchableText = `${hub.title} ${hub.english_gloss || ''} ${hub.ai_summary || ''}`.toLowerCase();
         for (const [topicKey, keywords] of Object.entries(TOPIC_KEYWORDS)) {
           if (topicKey.toLowerCase().includes(q) || q.includes(topicKey.toLowerCase())) {
-            if (keywords.some((kw) => hub.title.toLowerCase().includes(kw.toLowerCase()))) {
+            if (keywords.some((kw) => searchableText.includes(kw.toLowerCase()))) {
               return true;
             }
           }
@@ -203,7 +204,16 @@ export default function HomePageClient({
       result = result.filter((hub) => {
         const detected = getCategoryAndRegion(hub.title, hub.sources?.region);
         const topic = (hub.topic || detected.topic || '').toLowerCase();
-        return topic.includes(t) || hub.title.toLowerCase().includes(t);
+        if (topic.includes(t) || hub.title.toLowerCase().includes(t)) return true;
+        const searchableText = `${hub.title} ${hub.english_gloss || ''}`.toLowerCase();
+        for (const [topicKey, keywords] of Object.entries(TOPIC_KEYWORDS)) {
+          if (topicKey.toLowerCase().includes(t) || t.includes(topicKey.toLowerCase())) {
+            if (keywords.some((kw) => searchableText.includes(kw.toLowerCase()))) {
+              return true;
+            }
+          }
+        }
+        return false;
       });
     }
 

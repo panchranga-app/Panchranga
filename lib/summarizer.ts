@@ -25,12 +25,107 @@ const SENSITIVE_KEYWORDS = [
   'curfew imposed',
 ];
 
+export const PROTEST_KEYWORDS = [
+  // English
+  'protest',
+  'protests',
+  'protester',
+  'protesters',
+  'protesting',
+  'demonstration',
+  'demonstrators',
+  'agitation',
+  'agitators',
+  'dharna',
+  'bandh',
+  'bharat bandh',
+  'chakka jam',
+  'gherao',
+  'hartal',
+  'morcha',
+  'padayatra',
+  'hunger strike',
+  'fast unto death',
+  'sit-in',
+  'tear gas',
+  'lathi charge',
+  'lathicharge',
+  'water cannon',
+  'road blockade',
+  'rail roko',
+  'rasta roko',
+  // Hindi
+  'प्रदर्शन',
+  'विरोध प्रदर्शन',
+  'प्रदर्शनकारी',
+  'आंदोलन',
+  'धरना',
+  'चक्का जाम',
+  'भारत बंद',
+  'घेराव',
+  'हड़ताल',
+  'भूख हड़ताल',
+  'अनशन',
+  'लाठीचार्ज',
+  'मोर्चा',
+  // Marathi
+  'उपोषण',
+  'ठिय्या',
+  'रास्ता रोको',
+  'निदर्शने',
+  'धरणे',
+  // Tamil
+  'போராட்டம்',
+  'ஆர்ப்பாட்டம்',
+  'முற்றுகை',
+  'உண்ணாவிரதம்',
+  'மறியல்',
+  'பந்த்',
+  // Telugu
+  'నిరసన',
+  'ఆందోళన',
+  'ధర్నా',
+  'బంద్',
+  'రాస్తారోకో',
+  'దీక్ష',
+  // Kannada
+  'ಪ್ರತಿಭಟನೆ',
+  'ಧರಣಿ',
+  'ಬಂದ್',
+  'ಮುಷ್ಕರ',
+  'ಹೋರಾಟ',
+  // Malayalam
+  'പ്രതിഷേധം',
+  'സമരം',
+  'ഹർത്താൽ',
+  'ധർണ്ണ',
+  'ബന്ദ്',
+  'ഉപരോധം',
+  // Gujarati
+  'આંદોલન',
+  'ધરણા',
+  'દેખાવો',
+  // Bengali
+  'বিক্ষোভ',
+  'আন্দোলন',
+  'ধর্ণা',
+  'বনধ',
+  'ধর্মঘট',
+  'অবরোধ',
+  // Punjabi
+  'ਪ੍ਰਦਰਸ਼ਨ',
+  'ਧਰਨਾ',
+  'ਅੰਦੋਲਨ',
+  'ਮੋਰਚਾ',
+];
+
 const COMPACT_SYSTEM_PROMPT =
   'Neutral news editor. Write a 1-2 sentence factual briefing (<=35 words) strictly from the reports. Plain English, no source names, no quotes, no invented facts.';
 
 export interface SummaryResult {
   summary: string | null;
   isFlagged: boolean;
+  isProtest?: boolean;
   flagReason?: string;
   queued?: boolean;
   status?: 'ok' | 'cached' | 'trivial_bypass' | 'queued_try_later' | 'flagged';
@@ -43,15 +138,37 @@ export interface SummarizeOptions {
   fetchImpl?: typeof fetch;
 }
 
+function matchesFilterKeyword(text: string, keyword: string): boolean {
+  const kwLower = keyword.toLowerCase().trim();
+  if (/[^\x00-\x7F]/.test(kwLower)) {
+    return text.includes(kwLower);
+  }
+  const escaped = kwLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+  return regex.test(text);
+}
+
 /**
  * Checks if a Topic Hub contains sensitive high-stakes topics that require bypassing AI summarization (Sources-Only Mode).
  */
 export function checkSensitiveBypass(hub: TopicHub): boolean {
-  const fullText = `${hub.title} ${(hub.items || [])
-    .map((i) => `${i.title} ${i.raw_summary || ''}`)
+  const fullText = `${hub.title} ${hub.english_gloss || ''} ${(hub.items || [])
+    .map((i) => `${i.title} ${i.english_gloss || ''} ${i.raw_summary || ''}`)
     .join(' ')}`.toLowerCase();
 
   return SENSITIVE_KEYWORDS.some((keyword) => fullText.includes(keyword));
+}
+
+/**
+ * Checks if a Topic Hub covers a protest, agitation, or demonstration so it can be flagged as sensitive
+ * and routed exclusively to privacy-safe, non-training LLM providers (Groq / Cloudflare).
+ */
+export function checkProtestFilter(hub: TopicHub): boolean {
+  const fullText = `${hub.title} ${hub.english_gloss || ''} ${(hub.items || [])
+    .map((i) => `${i.title} ${i.english_gloss || ''} ${i.raw_summary || ''} ${i.og_description || ''}`)
+    .join(' ')}`.toLowerCase();
+
+  return PROTEST_KEYWORDS.some((keyword) => matchesFilterKeyword(fullText, keyword));
 }
 
 /**
@@ -157,6 +274,8 @@ export async function generateNeutralSummary(
     };
   }
 
+  const isProtest = checkProtestFilter(hub);
+
   // Trivial input bypass: skip LLM entirely when there are 0 items or a single short item with no additional context
   if (items.length === 0 || (items.length === 1 && (!bestSnippet || bestSnippet.length < 40))) {
     const state = loadQuotaState();
@@ -165,6 +284,7 @@ export async function generateNeutralSummary(
     return {
       summary: defaultFallback,
       isFlagged: false,
+      isProtest,
       status: 'trivial_bypass',
     };
   }
@@ -227,7 +347,7 @@ export async function generateNeutralSummary(
     totalInputTokens > 850
       ? await executeMapReduceSummary(userPrompt, COMPACT_SYSTEM_PROMPT, {
           priority: options.priority || 'interactive',
-          isSensitive: false,
+          isSensitive: isProtest,
           hubId: hub.id,
           fetchImpl: options.fetchImpl,
           validator: (txt) => isValidAiSummary(cleanGeneratedText(txt)),
@@ -238,7 +358,7 @@ export async function generateNeutralSummary(
             priority: options.priority || 'interactive',
             systemPrompt: COMPACT_SYSTEM_PROMPT,
             userPrompt,
-            isSensitive: false,
+            isSensitive: isProtest,
             hubId: hub.id,
             fetchImpl: options.fetchImpl,
           },
@@ -251,6 +371,7 @@ export async function generateNeutralSummary(
       return {
         summary: cleaned,
         isFlagged: false,
+        isProtest,
         queued: false,
         status: routerRes.status,
         fromCache: routerRes.fromCache,
@@ -263,6 +384,7 @@ export async function generateNeutralSummary(
   return {
     summary: defaultFallback,
     isFlagged: false,
+    isProtest,
     queued: routerRes.queued,
     status: routerRes.status,
     fromCache: false,
