@@ -315,7 +315,7 @@ async function fetchRss() {
       .eq('is_active', true);
 
     if (!error && dbSources && dbSources.length > 0) {
-      const dbMap = new Map(dbSources.map((s: any) => [s.name, s]));
+      const dbMap = new Map<string, any>(dbSources.map((s: any) => [s.name, s]));
       activeSources = activeSources.map((localSrc: any) => {
         const fromDb = dbMap.get(localSrc.name);
         return fromDb ? { ...localSrc, ...fromDb, feed_url: localSrc.feed_url || fromDb.feed_url } : localSrc;
