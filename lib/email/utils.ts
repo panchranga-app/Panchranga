@@ -66,7 +66,7 @@ export function buildComplianceHeaders(
   unsubscribeToken?: string,
   siteUrl?: string
 ): Record<string, string> {
-  const baseSiteUrl = (siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app').replace(/\/+$/, '');
+  const baseSiteUrl = (siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app').replace(/\/+$/, '');
   const tokenParam = unsubscribeToken ? `?token=${encodeURIComponent(unsubscribeToken)}` : '';
   const httpsUrl = `${baseSiteUrl}/api/newsletter/unsubscribe${tokenParam}`;
   

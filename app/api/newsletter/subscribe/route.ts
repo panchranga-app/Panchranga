@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     let emailSent = false;
     let emailError: string | undefined;
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
       const welcomeHtml = buildWelcomeEmailHTML(siteUrl);
       const sendRes = await sendTransactionalEmail(
         { email: cleanEmail, unsubscribeToken },

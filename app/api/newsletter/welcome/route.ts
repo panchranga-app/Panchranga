@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
     const welcomeHtml = buildWelcomeEmailHTML(siteUrl);
 
     const sendResult = await sendTransactionalEmail(

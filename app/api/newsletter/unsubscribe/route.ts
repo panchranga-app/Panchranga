@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
   const emailParam = searchParams.get('email');
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
 
   if (!token && !emailParam) {
     return new Response(renderErrorPage(siteUrl, 'Invalid or missing unsubscribe token.'), {
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://panchranga.vercel.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
   const supabase = getSupabase();
 
   if (supabase && token && UUID_REGEX.test(token)) {

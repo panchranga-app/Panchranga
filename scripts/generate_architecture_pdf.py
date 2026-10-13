@@ -92,7 +92,7 @@ class NumberedCanvas(canvas.Canvas):
         if self._pageNumber == 1:
             self.setFont(FONT_NORMAL, 8)
             self.setFillColor(COLOR_TEXT_MUTED)
-            self.drawString(40, 26, "Panchranga (पंचरंग) Open Source Intelligence Platform · panchranga.vercel.app")
+            self.drawString(40, 26, "Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app")
             self.drawRightString(555, 26, "Technical Architecture & Operational Guide · 2026")
             self.restoreState()
             return
@@ -790,7 +790,7 @@ def generate_pdf(output_filename="Panchranga-System-Architecture-and-How-It-Work
 
     story.append(Paragraph("<b>GitHub Actions Scheduled Workflows:</b>", h2_style))
     story.append(Paragraph("1. <b>Pipeline Ingestion Cron (<code>.github/workflows/ingest-cron.yml</code>):</b> Runs every 20 minutes (<code>cron: '*/20 * * * *'</code>). Checks out code on Node 22, injects Supabase and LLM API secrets, and executes <code>npm run pipeline</code> (fetch RSS + cluster items).", bullet_style))
-    story.append(Paragraph("2. <b>Daily Newsletter Cron (<code>.github/workflows/newsletter.yml</code>):</b> Triggers every morning at <b>7:00 AM IST</b> (1:30 AM UTC). Dispatches an authenticated HTTP POST request to <code>https://panchranga.vercel.app/api/newsletter/send</code>.", bullet_style))
+    story.append(Paragraph("2. <b>Daily Newsletter Cron (<code>.github/workflows/newsletter.yml</code>):</b> Triggers every morning at <b>7:00 AM IST</b> (1:30 AM UTC). Dispatches an authenticated HTTP POST request to <code>https://www.panchranga.app/api/newsletter/send</code>.", bullet_style))
 
     story.append(Paragraph("<b>Daily Morning Newsletter Engine (<code>app/api/newsletter/send/route.ts</code>):</b>", h2_style))
     story.append(Paragraph(
@@ -866,7 +866,7 @@ def generate_pdf(output_filename="Panchranga-System-Architecture-and-How-It-Work
         [
             Paragraph("<b>Document Author:</b> Antigravity Engineering", table_cell),
             Paragraph("<b>Repository:</b> github.com/Ravivishwakarma1/Panchranga", table_cell),
-            Paragraph("<b>Deployment:</b> panchranga.vercel.app", table_cell),
+            Paragraph("<b>Deployment:</b> www.panchranga.app", table_cell),
         ]
     ]
     sig_table = Table(sig_data, colWidths=[171, 171, 171])
