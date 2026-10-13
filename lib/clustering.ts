@@ -5,7 +5,7 @@ import { RawItem, TopicHub } from './types';
 import { resolveHubTimestamps } from './utils';
 
 export const SIMILARITY_THRESHOLD = 0.45; // Multilingual cosine similarity threshold for clustering same-event items
-export const SINGLE_SOURCE_SANITY_CAP = 12; // Cap on items from one publisher before requiring strict title re-comparison
+export const SINGLE_SOURCE_SANITY_CAP = 1; // Require strict title & lead similarity whenever a publisher already has an item in a hub
 
 export interface ClusteredResult {
   hubs: TopicHub[];

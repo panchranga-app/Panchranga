@@ -318,7 +318,7 @@ async function fetchRss() {
       const dbMap = new Map(dbSources.map((s: any) => [s.name, s]));
       activeSources = activeSources.map((localSrc: any) => {
         const fromDb = dbMap.get(localSrc.name);
-        return fromDb ? { ...localSrc, ...fromDb } : localSrc;
+        return fromDb ? { ...localSrc, ...fromDb, feed_url: localSrc.feed_url || fromDb.feed_url } : localSrc;
       });
     }
   }

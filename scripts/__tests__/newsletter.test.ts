@@ -365,6 +365,50 @@ async function runTests() {
     assert.strictEqual(new Set(titles).size, 3);
   });
 
+  // 9b. Multi-Source & Freshness Filter Tests
+  test('deduplicateNewsletterHubs: rejects single-source clusters and stale >36h items when configured', () => {
+    const nowMs = Date.now();
+    const recentIso = new Date(nowMs - 4 * 3600 * 1000).toISOString(); // 4h ago
+    const staleIso = new Date(nowMs - 72 * 3600 * 1000).toISOString(); // 3d ago
+
+    const candidateHubs = [
+      {
+        id: 'hub-single-source-youtube',
+        title: 'Unfiltered By Samdish ft. Vineet Kumar Singh',
+        raw_items: [
+          { url: 'https://youtube.com/watch?v=1', published_at: recentIso, sources: { name: 'Unfiltered by Samdish' } },
+          { url: 'https://youtube.com/watch?v=2', published_at: recentIso, sources: { name: 'Unfiltered by Samdish' } },
+          { url: 'https://youtube.com/watch?v=3', published_at: recentIso, sources: { name: 'Unfiltered by Samdish' } },
+        ],
+      },
+      {
+        id: 'hub-stale-multi-source',
+        title: 'Old Story From Last Week',
+        raw_items: [
+          { url: 'https://news.com/old-1', published_at: staleIso, sources: { name: 'The Hindu' } },
+          { url: 'https://news.com/old-2', published_at: staleIso, sources: { name: 'Indian Express' } },
+        ],
+      },
+      {
+        id: 'hub-fresh-multi-source',
+        title: 'Fresh Multi-Source Breaking Story Today',
+        raw_items: [
+          { url: 'https://news.com/fresh-1', published_at: recentIso, sources: { name: 'The Hindu' } },
+          { url: 'https://news.com/fresh-2', published_at: recentIso, sources: { name: 'NDTV' } },
+        ],
+      },
+    ];
+
+    const selected = deduplicateNewsletterHubs(candidateHubs, 3, {
+      minUniqueSources: 2,
+      maxItemAgeHours: 36,
+      nowMs,
+    });
+
+    assert.strictEqual(selected.length, 1);
+    assert.strictEqual(selected[0].id, 'hub-fresh-multi-source');
+  });
+
   // 10. Idempotency Guard Tests
   await testAsync('sendDailyNewsletter: blocks duplicate sends within same IST calendar day', async () => {
     const mockSupabaseWithAlreadySent: any = {

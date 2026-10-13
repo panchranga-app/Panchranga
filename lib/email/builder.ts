@@ -287,22 +287,73 @@ export function buildEmailHTML(
 }
 
 /**
+ * Counts distinct sources in a hub's raw_items array.
+ */
+function countDistinctHubSources(rawItems: any[]): number {
+  const names = new Set<string>();
+  for (const r of rawItems) {
+    const name = (r?.sources?.name || r?.source?.name || r?.source_name || '').trim();
+    if (name) {
+      names.add(name.toLowerCase());
+    } else if (r?.url) {
+      try {
+        names.add(new URL(r.url).hostname.replace(/^www\./, ''));
+      } catch {
+        names.add(r.url);
+      }
+    }
+  }
+  return names.size;
+}
+
+/**
+ * Counts distinct editorial lanes represented in a hub's raw_items array.
+ */
+function countDistinctHubLanes(rawItems: any[]): number {
+  const lanes = new Set<string>();
+  for (const r of rawItems) {
+    const lane = (r?.sources?.lane || r?.source?.lane || r?.lane || '').trim();
+    if (lane) lanes.add(lane.toLowerCase());
+  }
+  return lanes.size;
+}
+
+/**
  * Deduplicates and selects top distinct topic hubs for the newsletter:
- * 1. Skips hubs with 0 linked articles.
+ * 1. Skips hubs with 0 linked articles (or fewer than minUniqueSources when specified).
  * 2. Deduplicates against already selected hubs using normalized title match & word Jaccard similarity.
  * 3. Prevents overlapping story coverage by checking article URLs.
  */
-export function deduplicateNewsletterHubs(hubs: any[], maxCount = 3): any[] {
+export function deduplicateNewsletterHubs(
+  hubs: any[],
+  maxCount = 3,
+  options?: { minUniqueSources?: number; maxItemAgeHours?: number; nowMs?: number }
+): any[] {
   const selected: any[] = [];
   const selectedTitles: string[] = [];
   const selectedUrls = new Set<string>();
+  const minUniqueSources = options?.minUniqueSources ?? 1;
+  const maxItemAgeHours = options?.maxItemAgeHours;
+  const nowMs = options?.nowMs ?? Date.now();
+  const cutoffMs = maxItemAgeHours ? nowMs - maxItemAgeHours * 3600 * 1000 : null;
 
   for (const hub of hubs) {
     if (selected.length >= maxCount) break;
 
-    const rawItems = (hub.raw_items as any[]) || [];
-    // Must have at least 1 linked article to feature in newsletter
+    let rawItems = (hub.raw_items as any[]) || [];
+    if (cutoffMs !== null) {
+      rawItems = rawItems.filter((r: any) => {
+        if (!r?.published_at) return true;
+        const pubMs = new Date(r.published_at).getTime();
+        return !isNaN(pubMs) && pubMs >= cutoffMs;
+      });
+    }
+
+    // Must have at least 1 linked article and meet minimum distinct source count
     if (rawItems.length === 0) continue;
+    if (minUniqueSources > 1 && countDistinctHubSources(rawItems) < minUniqueSources) {
+      continue;
+    }
 
     const currentTitle = (hub.title || '').trim();
     if (!currentTitle) continue;
@@ -331,7 +382,7 @@ export function deduplicateNewsletterHubs(hubs: any[], maxCount = 3): any[] {
     const hasOverlappingUrl = hubUrls.some((u: string) => selectedUrls.has(u));
     if (hasOverlappingUrl) continue;
 
-    selected.push(hub);
+    selected.push({ ...hub, raw_items: rawItems });
     selectedTitles.push(currentTitle);
     hubUrls.forEach((u: string) => selectedUrls.add(u));
   }
@@ -340,54 +391,100 @@ export function deduplicateNewsletterHubs(hubs: any[], maxCount = 3): any[] {
 }
 
 /**
- * Fetches the top 3 topic hubs from the last 24-48 hours, guaranteed distinct and multi-source.
+ * Ranks candidate hubs by distinct source count, cross-lane diversity, and fresh item count.
+ */
+function rankNewsletterCandidates(hubs: any[], maxItemAgeHours = 36, nowMs = Date.now()): any[] {
+  const cutoffMs = nowMs - maxItemAgeHours * 3600 * 1000;
+  return hubs
+    .map((hub) => {
+      const allItems = (hub.raw_items as any[]) || [];
+      const freshItems = allItems.filter((r: any) => {
+        if (!r?.published_at) return false;
+        const pubMs = new Date(r.published_at).getTime();
+        return !isNaN(pubMs) && pubMs >= cutoffMs;
+      });
+      return {
+        ...hub,
+        raw_items: freshItems,
+        _uniqueSources: countDistinctHubSources(freshItems),
+        _uniqueLanes: countDistinctHubLanes(freshItems),
+        _freshCount: freshItems.length,
+      };
+    })
+    .filter((hub) => hub._freshCount > 0)
+    .sort((a, b) => {
+      if (b._uniqueSources !== a._uniqueSources) return b._uniqueSources - a._uniqueSources;
+      if (b._uniqueLanes !== a._uniqueLanes) return b._uniqueLanes - a._uniqueLanes;
+      return b._freshCount - a._freshCount;
+    });
+}
+
+/**
+ * Fetches the top 3 topic hubs from the last 24-36 hours, guaranteed distinct, fresh, and multi-source.
  */
 export async function fetchTopNewsletterHubs(supabase: any): Promise<any[]> {
-  const timeWindow = new Date();
-  timeWindow.setHours(timeWindow.getHours() - 48);
+  const nowMs = Date.now();
+  const primaryWindow = new Date(nowMs - 24 * 3600 * 1000);
+  const fallbackWindow = new Date(nowMs - 36 * 3600 * 1000);
 
-  // Fetch candidate pool of hubs ordered by item_count
+  const selectCols = `
+    id,
+    title,
+    ai_summary,
+    last_updated_at,
+    raw_items (
+      id,
+      og_image,
+      url,
+      published_at,
+      sources (name, lane)
+    )
+  `;
+
+  // Fetch candidate pool of hubs from last 24h ordered by item_count
   const { data: candidates } = await supabase
     .from('topic_hubs')
-    .select(`
-      id,
-      title,
-      ai_summary,
-      last_updated_at,
-      raw_items (
-        id,
-        og_image,
-        url,
-        sources (name, lane)
-      )
-    `)
-    .gte('last_updated_at', timeWindow.toISOString())
+    .select(selectCols)
+    .gte('last_updated_at', primaryWindow.toISOString())
     .order('item_count', { ascending: false })
-    .limit(30);
+    .limit(40);
 
-  let selected = deduplicateNewsletterHubs(candidates || [], 3);
+  const rankedPrimary = rankNewsletterCandidates(candidates || [], 36, nowMs);
 
-  // Fallback if fewer than 3 distinct hubs found in primary time window
+  // Strictly prefer multi-source hubs (>= 2 distinct publishers)
+  let selected = deduplicateNewsletterHubs(rankedPrimary, 3, {
+    minUniqueSources: 2,
+    maxItemAgeHours: 36,
+    nowMs,
+  });
+
+  // Fallback to 36h window if fewer than 3 multi-source hubs found in 24h window
   if (selected.length < 3) {
     const { data: fallbackCandidates } = await supabase
       .from('topic_hubs')
-      .select(`
-        id,
-        title,
-        ai_summary,
-        last_updated_at,
-        raw_items (
-          id,
-          og_image,
-          url,
-          sources (name, lane)
-        )
-      `)
+      .select(selectCols)
+      .gte('last_updated_at', fallbackWindow.toISOString())
       .order('last_updated_at', { ascending: false })
-      .limit(50);
+      .limit(60);
 
-    const mergedCandidates = [...(candidates || []), ...(fallbackCandidates || [])];
-    selected = deduplicateNewsletterHubs(mergedCandidates, 3);
+    const mergedRanked = rankNewsletterCandidates(
+      [...(candidates || []), ...(fallbackCandidates || [])],
+      36,
+      nowMs
+    );
+    selected = deduplicateNewsletterHubs(mergedRanked, 3, {
+      minUniqueSources: 2,
+      maxItemAgeHours: 36,
+      nowMs,
+    });
+
+    if (selected.length < 3) {
+      selected = deduplicateNewsletterHubs(mergedRanked, 3, {
+        minUniqueSources: 1,
+        maxItemAgeHours: 36,
+        nowMs,
+      });
+    }
   }
 
   return selected;

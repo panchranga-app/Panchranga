@@ -11,10 +11,11 @@ export function normalizeTitle(title: string): string {
   if (!title) return '';
 
   return title
-    // Strip common trailing publisher attribution: " - Source Name", " | Source Name", " — Source Name"
+    // Strip common trailing publisher attribution: " - Source Name", " | Source Name", " — Source Name", or "\u00a0\u00a0Source Name"
+    .replace(/\u00a0{2,}.*$/, '')
     .replace(/\s*[\-–—|]\s*[^–—\-|\s]+.*$/, '')
-    // Unicode-aware: keep letters (\p{L}), numbers (\p{N}), and whitespace (\s)
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    // Unicode-aware: keep letters (\p{L}), combining marks/matras (\p{M}), numbers (\p{N}), and whitespace (\s)
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
