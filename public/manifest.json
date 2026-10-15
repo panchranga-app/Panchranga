@@ -1,16 +1,28 @@
 {
   "short_name": "Panchranga",
-  "name": "Panchranga — Indian News Topic Hubs",
-  "description": "Multi-Lane Indian News Aggregator clustering events across Mainstream, Grassroots, and Public Discourse.",
+  "name": "Panchranga — Every Color of the Story",
+  "description": "Open-source multi-perspective Indian news aggregator clustering 96+ feeds across 13 languages into mainstream, grassroots, and public discourse lanes.",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
   "start_url": "/",
-  "background_color": "#0b0f19",
-  "theme_color": "#0b0f19",
-  "display": "standalone"
+  "background_color": "#FAFAF8",
+  "theme_color": "#1A1A1A",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "en-IN"
 }

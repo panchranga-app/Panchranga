@@ -8,16 +8,28 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run mode (prints planned provider split and counts, sends nothing)'
+        description: 'Dry run mode (calculates planned provider split and counts, sends nothing)'
         required: false
         default: 'false'
-        type: string
+        type: boolean
       force:
-        description: 'Force send even if daily newsletter was already sent today (bypasses idempotency guard)'
+        description: 'Force send (bypasses same-day idempotency guard)'
         required: false
         default: 'false'
+        type: boolean
+      test_email:
+        description: 'Safe Test Mode: Send single test edition only to this email address'
+        required: false
+        default: ''
         type: string
-
+      mode:
+        description: 'Execution mode: "api" (calls POST /api/newsletter/send on Netlify) or "runner" (executes Node CLI script directly)'
+        required: false
+        default: 'api'
+        type: choice
+        options:
+          - api
+          - runner
 
 concurrency:
   group: panchranga-newsletter
@@ -27,24 +39,95 @@ jobs:
   send-newsletter:
     runs-on: ubuntu-latest
     steps:
+      - name: Trigger Daily Newsletter via Netlify API (curl --fail-with-body)
+        if: ${{ inputs.mode == 'api' || github.event_name == 'schedule' }}
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ secrets.SITE_URL || secrets.NEXT_PUBLIC_SITE_URL || 'https://panchranga.app' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          FORCE_SEND: ${{ inputs.force || 'false' }}
+          TEST_EMAIL: ${{ inputs.test_email || '' }}
+        run: |
+          CLEAN_SITE_URL=$(echo "$SITE_URL" | sed 's:/*$::')
+          API_URL="${CLEAN_SITE_URL}/api/newsletter/send"
+
+          echo "===================================================="
+          echo "📡 Dispatching Daily Newsletter to Panchranga API"
+          echo "Endpoint: $API_URL"
+          echo "Dry Run: $DRY_RUN | Force: $FORCE_SEND | Test Email: $TEST_EMAIL"
+          echo "===================================================="
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ Error: CRON_SECRET GitHub secret is missing or empty."
+            exit 1
+          fi
+
+          # Build JSON payload safely
+          if [ -n "$TEST_EMAIL" ]; then
+            PAYLOAD=$(jq -n \
+              --arg dr "$DRY_RUN" \
+              --arg fc "$FORCE_SEND" \
+              --arg te "$TEST_EMAIL" \
+              '{dryRun: ($dr == "true"), force: ($fc == "true"), testRecipients: [$te]}')
+          else
+            PAYLOAD=$(jq -n \
+              --arg dr "$DRY_RUN" \
+              --arg fc "$FORCE_SEND" \
+              '{dryRun: ($dr == "true"), force: ($fc == "true")}')
+          fi
+
+          echo "Payload: $PAYLOAD"
+
+          TMP_OUTPUT=$(mktemp)
+          HTTP_CODE=$(curl -sS -o "$TMP_OUTPUT" -w "%{http_code}" \
+            --fail-with-body \
+            -X POST "$API_URL" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD") || CURL_EXIT=$?
+
+          echo "----------------------------------------------------"
+          echo "HTTP Status Code: $HTTP_CODE"
+          echo "Response Body:"
+          cat "$TMP_OUTPUT"
+          echo ""
+          echo "----------------------------------------------------"
+
+          if [ -n "$CURL_EXIT" ] && [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Newsletter API call failed (curl exit code: $CURL_EXIT, HTTP status: $HTTP_CODE)"
+            exit $CURL_EXIT
+          fi
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "❌ Newsletter API returned error status $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Newsletter successfully triggered via API!"
+
+      # Alternate Runner-based Execution (used if mode == 'runner')
       - name: Checkout Code
+        if: ${{ inputs.mode == 'runner' }}
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: ${{ inputs.mode == 'runner' }}
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install Dependencies
+        if: ${{ inputs.mode == 'runner' }}
         run: npm ci
 
-      - name: Send Daily Newsletter
+      - name: Send Daily Newsletter (Runner Script)
+        if: ${{ inputs.mode == 'runner' }}
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app' }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || secrets.SITE_URL || 'https://panchranga.app' }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_DAILY_LIMIT: ${{ secrets.GMAIL_DAILY_LIMIT }}
@@ -59,6 +142,5 @@ jobs:
           EMAIL_PROVIDER_ORDER: ${{ secrets.EMAIL_PROVIDER_ORDER }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           FORCE_SEND: ${{ inputs.force || 'false' }}
-          TEST_RECIPIENTS: ${{ secrets.TEST_RECIPIENTS }}
+          TEST_RECIPIENTS: ${{ inputs.test_email || secrets.TEST_RECIPIENTS }}
         run: npm run send-newsletter
-

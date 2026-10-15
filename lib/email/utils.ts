@@ -1,3 +1,5 @@
+import { SITE_URL } from '@/lib/config/site';
+
 /**
  * Masks an email address for privacy and security compliance.
  * e.g. "reader.name@domain.com" -> "r***e@domain.com"
@@ -66,7 +68,7 @@ export function buildComplianceHeaders(
   unsubscribeToken?: string,
   siteUrl?: string
 ): Record<string, string> {
-  const baseSiteUrl = (siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app').replace(/\/+$/, '');
+  const baseSiteUrl = (siteUrl || SITE_URL).replace(/\/+$/, '');
   const tokenParam = unsubscribeToken ? `?token=${encodeURIComponent(unsubscribeToken)}` : '';
   const httpsUrl = `${baseSiteUrl}/api/newsletter/unsubscribe${tokenParam}`;
   

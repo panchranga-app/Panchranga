@@ -1,9 +1,26 @@
+import type { Metadata } from 'next';
 import fs from 'fs';
 import path from 'path';
 import { STARTER_SOURCES } from '@/lib/constants';
 import { supabase } from '@/lib/supabase/client';
+import { SITE_URL } from '@/lib/config/site';
 
 export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: 'Verified Sources Directory — 96+ Feeds & 3 Lanes',
+  description:
+    'Explore 96+ verified Indian news sources across 13 languages and 3 editorial lanes powering Panchranga\'s automated open-source multi-perspective aggregator.',
+  alternates: {
+    canonical: `${SITE_URL}/sources`,
+  },
+  openGraph: {
+    title: 'Verified Sources Directory — Panchranga',
+    description:
+      'Explore 96+ verified Indian news sources across 13 languages and 3 editorial lanes powering Panchranga\'s automated open-source multi-perspective aggregator.',
+    url: `${SITE_URL}/sources`,
+  },
+};
 
 interface SourceItem {
   id?: string;

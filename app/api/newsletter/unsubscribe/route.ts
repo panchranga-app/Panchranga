@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { buildUnsubscribeConfirmationEmailHTML, sendTransactionalEmail } from '@/lib/email';
+import { SITE_URL } from '@/lib/config/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
   const emailParam = searchParams.get('email');
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
+  const siteUrl = SITE_URL;
 
   if (!token && !emailParam) {
     return new Response(renderErrorPage(siteUrl, 'Invalid or missing unsubscribe token.'), {
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
+  const siteUrl = SITE_URL;
   const supabase = getSupabase();
 
   if (supabase && token && UUID_REGEX.test(token)) {

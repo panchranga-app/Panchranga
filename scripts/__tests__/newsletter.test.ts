@@ -75,12 +75,12 @@ async function runTests() {
   // 3. Compliance Headers & RFC 8058
   test('Compliance Headers: generates valid List-Unsubscribe and List-Unsubscribe-Post', () => {
     process.env.GMAIL_USER = 'newsletter@panchranga.in';
-    process.env.NEXT_PUBLIC_SITE_URL = 'https://www.panchranga.app';
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://panchranga.app';
 
     const headers = buildComplianceHeaders('subscriber@example.com', 'token-12345');
 
     assert.strictEqual(headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
-    assert(headers['List-Unsubscribe'].includes('https://www.panchranga.app/api/newsletter/unsubscribe?token=token-12345'));
+    assert(headers['List-Unsubscribe'].includes('https://panchranga.app/api/newsletter/unsubscribe?token=token-12345'));
     assert(headers['List-Unsubscribe'].includes('mailto:newsletter@panchranga.in?subject=Unsubscribe%20subscriber%40example.com'));
   });
 
@@ -94,7 +94,7 @@ async function runTests() {
         image: 'https://example.com/img1.jpg',
         sourceNames: ['The Hindu', 'Indian Express'],
         totalSources: 5,
-        hubUrl: 'https://www.panchranga.app/hub/hub-1',
+        hubUrl: 'https://panchranga.app/hub/hub-1',
       },
     ];
 
@@ -102,13 +102,13 @@ async function runTests() {
       mockStories,
       'Saturday, 3 October 2026',
       'token-abc-123',
-      'https://www.panchranga.app'
+      'https://panchranga.app'
     );
 
     // Verify key sections
-    assert(html.includes("You're receiving this because you subscribed at www.panchranga.app"));
+    assert(html.includes("You're receiving this because you subscribed at panchranga.app"));
     assert(html.includes('Story 1: National Economic Reform'));
-    assert(html.includes('https://www.panchranga.app/api/newsletter/unsubscribe?token=token-abc-123'));
+    assert(html.includes('https://panchranga.app/api/newsletter/unsubscribe?token=token-abc-123'));
     assert(html.includes('पंचरंग · Every Color of the Story'));
     assert(html.includes('Read full coverage →'));
   });

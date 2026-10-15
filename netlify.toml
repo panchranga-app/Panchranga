@@ -1,0 +1,82 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_PUBLIC_SITE_URL = "https://panchranga.app"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ----------------------------------------------------
+# 301 Canonical Host Redirects
+# ----------------------------------------------------
+# Force naked domain https://panchranga.app from www
+[[redirects]]
+  from = "https://www.panchranga.app/*"
+  to = "https://panchranga.app/:splat"
+  status = 301
+  force = true
+
+# Redirect Netlify subdomain to custom canonical domain
+[[redirects]]
+  from = "https://panchranga.netlify.app/*"
+  to = "https://panchranga.app/:splat"
+  status = 301
+  force = true
+
+# ----------------------------------------------------
+# Caching & Asset Headers
+# ----------------------------------------------------
+# Immutable caching for hashed Next.js static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Static fonts
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Favicons and webmanifest
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/icon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+# ----------------------------------------------------
+# Global Security Headers
+# ----------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# ----------------------------------------------------
+# Non-Production Contexts: Enforce noindex at HTTP level
+# ----------------------------------------------------
+[context.deploy-preview.headers]
+  for = "/*"
+  [context.deploy-preview.headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[context.branch-deploy.headers]
+  for = "/*"
+  [context.branch-deploy.headers.values]
+    X-Robots-Tag = "noindex, nofollow"
