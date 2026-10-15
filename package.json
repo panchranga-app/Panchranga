@@ -15,7 +15,9 @@
     "pipeline": "tsx scripts/fetch-rss.ts && tsx scripts/cluster-items.ts",
     "pipeline:full": "tsx scripts/fetch-rss.ts && tsx scripts/cluster-items.ts && tsx scripts/summarize-hubs.ts",
     "send-newsletter": "tsx scripts/send-newsletter.ts",
-    "clean-orphans": "tsx scripts/cleanup-orphaned-hubs.ts"
+    "send-welcome": "tsx scripts/send-welcome.ts",
+    "clean-orphans": "tsx scripts/cleanup-orphaned-hubs.ts",
+    "test": "tsx scripts/__tests__/newsletter.test.ts"
   },
 
   "dependencies": {

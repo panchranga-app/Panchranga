@@ -42,6 +42,7 @@ export class GmailSmtpProvider implements EmailProvider {
 
       await transporter.sendMail({
         from,
+        replyTo: process.env.NEWSLETTER_REPLY_TO || 'news@panchranga.app',
         to: recipient.email, // Send strictly ONE email per subscriber
         subject: message.subject,
         html: message.html,

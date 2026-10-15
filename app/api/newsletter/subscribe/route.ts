@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     let emailError: string | undefined;
     try {
       const siteUrl = SITE_URL;
-      const welcomeHtml = buildWelcomeEmailHTML(siteUrl);
+      const welcomeHtml = buildWelcomeEmailHTML(siteUrl, unsubscribeToken);
       const sendRes = await sendTransactionalEmail(
         { email: cleanEmail, unsubscribeToken },
         {

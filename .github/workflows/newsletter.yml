@@ -22,6 +22,14 @@ on:
         required: false
         default: ''
         type: string
+      email_type:
+        description: 'Type of email: "daily" (Daily 7 AM Edition) or "welcome" (Onboarding Welcome Email)'
+        required: false
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - welcome
       mode:
         description: 'Execution mode: "api" (calls POST /api/newsletter/send on Netlify) or "runner" (executes Node CLI script directly)'
         required: false
@@ -47,8 +55,38 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           FORCE_SEND: ${{ inputs.force || 'false' }}
           TEST_EMAIL: ${{ inputs.test_email || '' }}
+          EMAIL_TYPE: ${{ inputs.email_type || 'daily' }}
         run: |
           CLEAN_SITE_URL=$(echo "$SITE_URL" | sed 's:/*$::')
+
+          if [ "$EMAIL_TYPE" = "welcome" ]; then
+            WELCOME_URL="${CLEAN_SITE_URL}/api/newsletter/welcome"
+            TARGET="${TEST_EMAIL:-ravivishwakarma5754@gmail.com}"
+            echo "===================================================="
+            echo "💌 Dispatching Onboarding Welcome Email via Panchranga API"
+            echo "Endpoint: $WELCOME_URL"
+            echo "Target: $TARGET"
+            echo "===================================================="
+
+            TMP_OUTPUT=$(mktemp)
+            HTTP_CODE=$(curl -sS -o "$TMP_OUTPUT" -w "%{http_code}" \
+              --fail-with-body \
+              -X POST "$WELCOME_URL" \
+              -H "Content-Type: application/json" \
+              -d "{\"email\": \"$TARGET\"}") || CURL_EXIT=$?
+
+            echo "HTTP Status Code: $HTTP_CODE"
+            cat "$TMP_OUTPUT"
+            echo ""
+
+            if [ -n "$CURL_EXIT" ] && [ "$CURL_EXIT" -ne 0 ]; then
+              echo "❌ Welcome email API call failed"
+              exit $CURL_EXIT
+            fi
+            echo "✅ Onboarding welcome email sent successfully!"
+            exit 0
+          fi
+
           API_URL="${CLEAN_SITE_URL}/api/newsletter/send"
 
           echo "===================================================="
@@ -122,7 +160,7 @@ jobs:
         if: ${{ inputs.mode == 'runner' }}
         run: npm ci
 
-      - name: Send Daily Newsletter (Runner Script)
+      - name: Send Daily Newsletter or Onboarding Email (Runner Script)
         if: ${{ inputs.mode == 'runner' }}
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -144,4 +182,10 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           FORCE_SEND: ${{ inputs.force || 'false' }}
           TEST_RECIPIENTS: ${{ inputs.test_email || secrets.TEST_RECIPIENTS }}
-        run: npm run send-newsletter
+          EMAIL_TYPE: ${{ inputs.email_type || 'daily' }}
+        run: |
+          if [ "$EMAIL_TYPE" = "welcome" ]; then
+            npm run send-welcome "${{ inputs.test_email || 'ravivishwakarma5754@gmail.com' }}"
+          else
+            npm run send-newsletter
+          fi

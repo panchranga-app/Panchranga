@@ -23,9 +23,11 @@ export class ResendProvider implements EmailProvider {
     try {
       const resend = this.getResend();
       const fromEmail = process.env.RESEND_FROM_EMAIL || 'Panchranga <news@panchranga.app>';
+      const replyTo = process.env.NEWSLETTER_REPLY_TO || 'news@panchranga.app';
 
       const sendResult = await resend.emails.send({
         from: fromEmail,
+        replyTo,
         to: recipient.email,
         subject: message.subject,
         html: message.html,

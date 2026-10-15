@@ -72,7 +72,7 @@ export function buildComplianceHeaders(
   const tokenParam = unsubscribeToken ? `?token=${encodeURIComponent(unsubscribeToken)}` : '';
   const httpsUrl = `${baseSiteUrl}/api/newsletter/unsubscribe${tokenParam}`;
   
-  const mailtoAddress = process.env.GMAIL_USER || 'panchranga.news@gmail.com';
+  const mailtoAddress = process.env.NEWSLETTER_REPLY_TO || process.env.GMAIL_USER || 'news@panchranga.app';
   const mailtoUrl = `mailto:${mailtoAddress}?subject=Unsubscribe%20${encodeURIComponent(recipientEmail)}`;
 
   return {
