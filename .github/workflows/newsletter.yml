@@ -42,7 +42,7 @@ jobs:
       - name: Trigger Daily Newsletter via Netlify API (curl --fail-with-body)
         if: ${{ inputs.mode == 'api' || github.event_name == 'schedule' }}
         env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET || secrets.NEWSLETTER_SECRET_KEY }}
           SITE_URL: ${{ secrets.SITE_URL || secrets.NEXT_PUBLIC_SITE_URL || 'https://panchranga.app' }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           FORCE_SEND: ${{ inputs.force || 'false' }}
@@ -58,7 +58,8 @@ jobs:
           echo "===================================================="
 
           if [ -z "$CRON_SECRET" ]; then
-            echo "❌ Error: CRON_SECRET GitHub secret is missing or empty."
+            echo "❌ Error: Neither CRON_SECRET nor NEWSLETTER_SECRET_KEY is set in GitHub Secrets."
+            echo "👉 Please go to GitHub Repo -> Settings -> Secrets and variables -> Actions and add CRON_SECRET."
             exit 1
           fi
 
