@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { buildWelcomeEmailHTML, sendTransactionalEmail } from '@/lib/email';
+import { SITE_URL } from '@/lib/config/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
     let emailSent = false;
     let emailError: string | undefined;
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
+      const siteUrl = SITE_URL;
       const welcomeHtml = buildWelcomeEmailHTML(siteUrl);
       const sendRes = await sendTransactionalEmail(
         { email: cleanEmail, unsubscribeToken },

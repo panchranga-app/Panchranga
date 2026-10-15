@@ -1,5 +1,6 @@
 import { HubStory } from './types';
 import { normalizeTitle, wordJaccardSimilarity } from '../dedup';
+import { SITE_URL } from '@/lib/config/site';
 
 /**
  * Builds the newsletter HTML email.
@@ -9,7 +10,7 @@ export function buildEmailHTML(
   stories: HubStory[],
   date: string,
   unsubscribeToken?: string,
-  siteUrl: string = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app'
+  siteUrl: string = SITE_URL
 ): string {
   const baseSiteUrl = siteUrl.replace(/\/+$/, '');
   const tokenParam = unsubscribeToken ? `?token=${encodeURIComponent(unsubscribeToken)}` : '';
@@ -250,7 +251,7 @@ export function buildEmailHTML(
                     color: #9CA3AF;
                     line-height: 1.6;
                   ">
-                    You're receiving this because you subscribed at www.panchranga.app
+                    You're receiving this because you subscribed at panchranga.app
                   </p>
                   <p style="
                     margin: 0;
@@ -527,7 +528,7 @@ export function formatHubStories(hubs: any[], siteUrl: string): HubStory[] {
  * Builds the Welcome Email HTML template with brand colors and styling.
  */
 export function buildWelcomeEmailHTML(
-  siteUrl: string = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app'
+  siteUrl: string = SITE_URL
 ): string {
   const baseSiteUrl = siteUrl.replace(/\/+$/, '');
 
@@ -652,7 +653,7 @@ export function buildWelcomeEmailHTML(
  * Builds the Unsubscribe Confirmation Email HTML template.
  */
 export function buildUnsubscribeConfirmationEmailHTML(
-  siteUrl: string = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app'
+  siteUrl: string = SITE_URL
 ): string {
   const baseSiteUrl = siteUrl.replace(/\/+$/, '');
 

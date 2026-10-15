@@ -7,6 +7,7 @@ import {
 import { dispatchNewsletter, sendTransactionalEmail } from './dispatcher';
 import { DailyNewsletterOptions, DailyNewsletterResult, EmailRecipient } from './types';
 import { buildComplianceHeaders, formatIstDate, getStartOfCurrentIstDayUtc, maskEmail } from './utils';
+import { SITE_URL } from '@/lib/config/site';
 
 export function getSupabaseServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -72,7 +73,7 @@ export async function sendDailyNewsletter(
     }
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.panchranga.app';
+  const siteUrl = SITE_URL;
 
 
   // Step 1: Fetch Top 3 Hubs
