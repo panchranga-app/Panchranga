@@ -40,3 +40,4 @@ next-env.d.ts
 # scratch
 /scratch/
 data/llm-*.json
+*.csv
