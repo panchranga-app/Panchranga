@@ -22,7 +22,7 @@ export class ResendProvider implements EmailProvider {
   async send(recipient: EmailRecipient, message: EmailMessage): Promise<SendResult> {
     try {
       const resend = this.getResend();
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Panchranga <onboarding@resend.dev>';
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Panchranga <news@panchranga.app>';
 
       const sendResult = await resend.emails.send({
         from: fromEmail,

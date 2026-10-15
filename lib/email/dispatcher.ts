@@ -215,7 +215,7 @@ export async function dispatchNewsletter({
   isTestMode?: boolean;
 }): Promise<DailyNewsletterResult> {
   const providerMap = createProviders();
-  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'gmail,brevo,resend';
+  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail';
   const order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
   const limits = getDailyLimits();
   const sentTodayMap = await getSendsTodayByProvider(supabase);
