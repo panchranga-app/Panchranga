@@ -1,8 +1,20 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/config/site';
 
-export const metadata = {
-  title: 'About Panchranga — Cross-Media News Intelligence',
-  description: 'Learn about Panchranga, our three-lane media architecture, semantic clustering, and open editorial principles.',
+export const metadata: Metadata = {
+  title: 'About Us — Editorial Mission & Tech Architecture',
+  description:
+    'Learn how Panchranga clusters Indian news across mainstream media, grassroots reporters, and public discourse with open algorithms and zero editorial bias.',
+  alternates: {
+    canonical: `${SITE_URL}/about`,
+  },
+  openGraph: {
+    title: 'About Panchranga — Cross-Media News Intelligence',
+    description:
+      'Learn how Panchranga clusters Indian news across mainstream media, grassroots reporters, and public discourse with open algorithms and zero editorial bias.',
+    url: `${SITE_URL}/about`,
+  },
 };
 
 export default function AboutPage() {

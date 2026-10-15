@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import fs from 'fs';
 import path from 'path';
 import Link from 'next/link';
@@ -9,12 +10,64 @@ import SafeImage from '@/components/SafeImage';
 import HubAiOverview from '@/components/HubAiOverview';
 import { timeAgo, resolveHubTimestamps } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
+import { SITE_URL } from '@/lib/config/site';
 
 export const revalidate = 60;
 
 interface PageProps {
   params: {
     id: string;
+  };
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const hub = await getHubData(params.id);
+  if (!hub) {
+    return {
+      title: 'Story Hub',
+      description: 'Explore multi-perspective Indian news reporting across mainstream, grassroots, and public discourse.',
+    };
+  }
+
+  const cleanTitle = (hub.title || 'Breaking Story').trim();
+  const title = `${cleanTitle} — Multi-Perspective Analysis`;
+
+  let rawDesc = hub.ai_summary?.trim() || '';
+  if (!rawDesc) {
+    rawDesc = `Explore multi-perspective Indian news reporting on "${cleanTitle}" across mainstream media, independent grassroots, and public discourse on Panchranga.`;
+  }
+  const description = rawDesc.length > 158 ? rawDesc.slice(0, 155) + '...' : rawDesc;
+
+  const hubUrl = `${SITE_URL}/hub/${encodeURIComponent(params.id)}`;
+  const firstImage = hub.items?.find((i) => i.og_image)?.og_image;
+  const imageUrl = firstImage || `${SITE_URL}/opengraph-image.png`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: hubUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: hubUrl,
+      type: 'article',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: cleanTitle,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+    },
   };
 }
 
@@ -253,9 +306,7 @@ function ArticleCard({ item }: { item: RawItem }) {
   const ytEmbedUrl = getYouTubeEmbedUrl(item.url);
   const isReddit = (item.lane || item.sources?.lane || item.source?.lane) === 'discourse' || item.url?.includes('reddit.com');
 
-  const imageUrl = item.og_image
-    ? `/api/og-image?url=${encodeURIComponent(item.og_image)}`
-    : null;
+  const imageUrl = item.og_image || null;
 
   const sourceName = item.sources?.name || item.source?.name || item.source_name || (isReddit ? 'Reddit' : ytEmbedUrl ? 'YouTube' : 'Publisher');
   const lane = item.sources?.lane || item.source?.lane || item.lane || 'mainstream';
