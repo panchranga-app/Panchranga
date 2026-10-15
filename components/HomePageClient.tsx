@@ -436,9 +436,7 @@ export default function HomePageClient({
                 const totalSources = getSourceCount(hub);
                 const detected = getCategoryAndRegion(hub.title, hub.sources?.region);
                 const region = hub.region || detected.region;
-                const imageUrl = hub.og_image
-                  ? `/api/og-image?url=${encodeURIComponent(hub.og_image)}`
-                  : null;
+                const imageUrl = hub.og_image || null;
 
                 return (
                   <div key={`briefing-${hub.id}`} className="py-[16px] first:pt-0">
@@ -508,9 +506,7 @@ export default function HomePageClient({
               <div className="divide-y divide-[#E5E5E0]">
                 {mostCoveredHubs.map((hub) => {
                   const totalSources = getSourceCount(hub);
-                  const imageUrl = hub.og_image
-                    ? `/api/og-image?url=${encodeURIComponent(hub.og_image)}`
-                    : null;
+                  const imageUrl = hub.og_image || null;
 
                   return (
                     <div key={`most-covered-${hub.id}`} className="py-3 first:pt-0">
@@ -675,9 +671,7 @@ export default function HomePageClient({
  */
 function HeroCard({ hub }: { hub: Hub }) {
   const totalSources = getSourceCount(hub);
-  const imageUrl = hub.og_image
-    ? `/api/og-image?url=${encodeURIComponent(hub.og_image)}`
-    : null;
+  const imageUrl = hub.og_image || null;
 
   return (
     <article className="relative w-full h-[380px] rounded-lg overflow-hidden group mb-[24px]">
@@ -750,9 +744,7 @@ function StoryListItem({ hub }: { hub: Hub }) {
   const topic = hub.topic || detected.topic;
   const region = hub.region || detected.region;
   const sourceName = hub.sources?.name || hub.first_source_name || 'Unknown';
-  const imageUrl = hub.og_image
-    ? `/api/og-image?url=${encodeURIComponent(hub.og_image)}`
-    : null;
+  const imageUrl = hub.og_image || null;
 
   return (
     <div className="py-[16px] flex justify-between items-start gap-4 border-b border-[#E5E5E0]">
@@ -927,9 +919,7 @@ function TopicSection({ topicName, hubs }: { topicName: string; hubs: Hub[] }) {
           <div className="space-y-4 divide-y divide-[#333333]">
             {finalLessCovered.map((hub) => {
               const totalSources = getSourceCount(hub);
-              const imageUrl = hub.og_image
-                ? `/api/og-image?url=${encodeURIComponent(hub.og_image)}`
-                : null;
+              const imageUrl = hub.og_image || null;
 
               return (
                 <div key={`less-covered-${hub.id}`} className="pt-4 first:pt-0">

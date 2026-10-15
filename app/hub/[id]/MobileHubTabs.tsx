@@ -79,9 +79,7 @@ export default function MobileHubTabs({
           currentItems.map((item, idx) => {
             const ytEmbedUrl = getYouTubeEmbedUrl(item.url);
             const isReddit = (item.lane || item.sources?.lane || item.source?.lane) === 'discourse' || item.url?.includes('reddit.com');
-            const imageUrl = item.og_image
-              ? `/api/og-image?url=${encodeURIComponent(item.og_image)}`
-              : null;
+            const imageUrl = item.og_image || null;
 
             const sourceName = item.sources?.name || item.source?.name || item.source_name || (isReddit ? 'Reddit' : ytEmbedUrl ? 'YouTube' : 'Publisher');
             const lane = item.sources?.lane || item.source?.lane || item.lane || 'mainstream';

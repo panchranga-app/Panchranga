@@ -5,12 +5,19 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+};
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const q = (searchParams.get('q') || '').trim();
 
   if (!q) {
-    return NextResponse.json({ query: '', hubs: [], items: [] });
+    return NextResponse.json(
+      { query: '', hubs: [], items: [] },
+      { headers: CACHE_HEADERS }
+    );
   }
 
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
@@ -49,11 +56,14 @@ export async function GET(request: NextRequest) {
           .limit(limit),
       ]);
 
-      return NextResponse.json({
-        query: q,
-        hubs: hubsRes.data || [],
-        items: itemsRes.data || [],
-      });
+      return NextResponse.json(
+        {
+          query: q,
+          hubs: hubsRes.data || [],
+          items: itemsRes.data || [],
+        },
+        { headers: CACHE_HEADERS }
+      );
     } catch (err: any) {
       console.error('Supabase search error:', err);
     }
@@ -82,11 +92,14 @@ export async function GET(request: NextRequest) {
       .filter((i) => i.title?.toLowerCase().includes(lowerQ))
       .slice(0, limit);
 
-    return NextResponse.json({
-      query: q,
-      hubs: matchingHubs,
-      items: matchingItems,
-    });
+    return NextResponse.json(
+      {
+        query: q,
+        hubs: matchingHubs,
+        items: matchingItems,
+      },
+      { headers: CACHE_HEADERS }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

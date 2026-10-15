@@ -88,9 +88,7 @@ function HeroCard({ hub }: { hub: TopicHub }) {
   const discourseCount = items.filter((i) => i.lane === 'discourse').length;
 
   const firstOgImage = items.find((i) => i.og_image)?.og_image;
-  const imageUrl = firstOgImage
-    ? `/api/og-image?url=${encodeURIComponent(firstOgImage)}`
-    : null;
+  const imageUrl = firstOgImage || null;
 
   return (
     <article className="relative w-full h-[420px] rounded-xl overflow-hidden shadow-md group">
@@ -167,9 +165,7 @@ function StoryCard({ hub }: { hub: TopicHub }) {
   const discourseCount = items.filter((i) => i.lane === 'discourse').length;
 
   const firstOgItem = items.find((i) => i.og_image);
-  const imageUrl = firstOgItem?.og_image
-    ? `/api/og-image?url=${encodeURIComponent(firstOgItem.og_image)}`
-    : null;
+  const imageUrl = firstOgItem?.og_image || null;
   const fallbackSourceName =
     firstOgItem?.source_name || items[0]?.source_name || 'Panchranga Hub';
 
