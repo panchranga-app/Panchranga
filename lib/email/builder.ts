@@ -709,7 +709,7 @@ export function buildWelcomeEmailHTML(
                     <tr>
                       <td>
                         <p style="margin: 0; font-family: Inter, Arial, sans-serif; font-size: 13px; color: #7A5500; line-height: 1.5;">
-                          📬 <strong>Ensure Delivery:</strong> Add <strong>news@panchranga.app</strong> to your contacts or drag this email into your <strong>Primary</strong> tab to ensure you never miss a morning edition.
+                          📬 <strong>Ensure Delivery:</strong> Add <strong>welcome@panchranga.app</strong> and <strong>news@panchranga.app</strong> to your contacts or drag this email into your <strong>Primary</strong> tab to ensure you never miss a morning edition.
                         </p>
                       </td>
                     </tr>

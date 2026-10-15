@@ -46,6 +46,8 @@ async function run() {
   const result = await sendTransactionalEmail(
     { email: recipient, unsubscribeToken },
     {
+      from: 'Panchranga <welcome@panchranga.app>',
+      replyTo: 'welcome@panchranga.app',
       subject: 'Welcome to Panchranga 🗞️',
       html: welcomeHtml,
     }

@@ -40,9 +40,12 @@ export class GmailSmtpProvider implements EmailProvider {
       const user = process.env.GMAIL_USER;
       const from = `Panchranga <${user}>`;
 
+      const defaultReplyTo = process.env.NEWSLETTER_REPLY_TO || 'news@panchranga.app';
+      const replyTo = message.replyTo || (message.from ? message.from.replace(/.*<([^>]+)>.*/, '$1') : defaultReplyTo);
+
       await transporter.sendMail({
         from,
-        replyTo: process.env.NEWSLETTER_REPLY_TO || 'news@panchranga.app',
+        replyTo,
         to: recipient.email, // Send strictly ONE email per subscriber
         subject: message.subject,
         html: message.html,

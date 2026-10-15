@@ -47,6 +47,8 @@ export async function POST(req: Request) {
     const sendResult = await sendTransactionalEmail(
       { email: cleanEmail, unsubscribeToken },
       {
+        from: 'Panchranga <welcome@panchranga.app>',
+        replyTo: 'welcome@panchranga.app',
         subject: 'Welcome to Panchranga 🗞️',
         html: welcomeHtml,
       }
