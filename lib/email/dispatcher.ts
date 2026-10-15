@@ -104,8 +104,16 @@ export async function getProviderBudgetStatuses(
   supabase: any,
   providerMap: Record<string, EmailProvider>
 ): Promise<ProviderBudgetStatus[]> {
-  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'gmail,brevo,resend';
-  const order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail';
+  let order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+
+  // Prioritize custom domain Resend if configured
+  if (providerMap.resend?.isConfigured() && order.indexOf('resend') > order.indexOf('gmail') && order.indexOf('gmail') !== -1) {
+    order = ['resend', ...order.filter((p) => p !== 'resend')];
+  } else if (providerMap.resend?.isConfigured() && !order.includes('resend')) {
+    order = ['resend', ...order];
+  }
+
   const limits = getDailyLimits();
   const sentTodayMap = await getSendsTodayByProvider(supabase);
 
@@ -144,8 +152,15 @@ export async function sendTransactionalEmail(
   message: EmailMessage
 ): Promise<SendResult> {
   const providers = createProviders();
-  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'gmail,brevo,resend';
-  const order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+  const orderString = process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail';
+  let order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+
+  // Prioritize custom domain Resend if configured
+  if (providers.resend?.isConfigured() && order.indexOf('resend') > order.indexOf('gmail') && order.indexOf('gmail') !== -1) {
+    order = ['resend', ...order.filter((p) => p !== 'resend')];
+  } else if (providers.resend?.isConfigured() && !order.includes('resend')) {
+    order = ['resend', ...order];
+  }
 
   let lastError = 'No email providers configured';
 
@@ -216,7 +231,15 @@ export async function dispatchNewsletter({
 }): Promise<DailyNewsletterResult> {
   const providerMap = createProviders();
   const orderString = process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail';
-  const order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+  let order = orderString.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+
+  // Prioritize custom domain Resend if configured
+  if (providerMap.resend?.isConfigured() && order.indexOf('resend') > order.indexOf('gmail') && order.indexOf('gmail') !== -1) {
+    order = ['resend', ...order.filter((p) => p !== 'resend')];
+  } else if (providerMap.resend?.isConfigured() && !order.includes('resend')) {
+    order = ['resend', ...order];
+  }
+
   const limits = getDailyLimits();
   const sentTodayMap = await getSendsTodayByProvider(supabase);
 

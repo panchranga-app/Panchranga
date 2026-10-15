@@ -56,6 +56,12 @@ export async function GET(req: Request) {
       providerCounts: result.providerCounts,
       stories: result.storiesCount,
       dryRun: result.dryRun,
+      diagnostics: {
+        resendConfigured: Boolean(process.env.RESEND_API_KEY),
+        resendKeyLength: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
+        fromEmail: process.env.RESEND_FROM_EMAIL || 'Panchranga <news@panchranga.app>',
+        emailProviderOrder: process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail',
+      },
     });
   } catch (error: any) {
     console.error('[API /api/newsletter/send] Execution error:', error);
@@ -117,6 +123,12 @@ export async function POST(req: Request) {
       providerCounts: result.providerCounts,
       stories: result.storiesCount,
       dryRun: result.dryRun,
+      diagnostics: {
+        resendConfigured: Boolean(process.env.RESEND_API_KEY),
+        resendKeyLength: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
+        fromEmail: process.env.RESEND_FROM_EMAIL || 'Panchranga <news@panchranga.app>',
+        emailProviderOrder: process.env.EMAIL_PROVIDER_ORDER || 'resend,brevo,gmail',
+      },
     });
   } catch (error: any) {
     console.error('[API /api/newsletter/send] Execution error:', error);
