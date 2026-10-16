@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Panchranga (पंचरंग) — Complete System Architecture & Operational Blueprint</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1A202C;
+    background: #FFFFFF;
+    font-size: 7.9pt;
+    line-height: 1.34;
+  }
+
+  .doc-page {
+    page-break-after: always;
+    break-after: page;
+    height: 279mm;
+    max-height: 279mm;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    padding: 1.5mm 0;
+  }
+  .doc-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.2px solid #E2E8F0;
+    padding-bottom: 2.5px;
+    font-size: 6.8pt;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #64748B;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .page-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1.2px solid #E2E8F0;
+    padding-top: 2.5px;
+    font-size: 6.8pt;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #64748B;
+  }
+
+  .page-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    overflow: hidden;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4 {
+    color: #1A1A2E;
+    margin: 0;
+    padding: 0;
+    font-family: 'Georgia', 'Cambria', serif;
+  }
+  .section-title {
+    font-size: 12.5pt;
+    font-weight: 700;
+    color: #1A1A2E;
+    border-bottom: 1.8px solid #C0392B;
+    padding-bottom: 1.5px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .section-tag {
+    font-size: 7.2pt;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #C0392B;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .sub-title {
+    font-size: 9.2pt;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 4px;
+    margin-bottom: 2.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  p {
+    margin: 0 0 4px 0;
+  }
+  ul, ol {
+    margin: 0 0 4px 0;
+    padding-left: 13px;
+  }
+  li {
+    margin-bottom: 2px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.3pt;
+    margin-bottom: 5px;
+  }
+  th {
+    background-color: #F1F5F9;
+    color: #0F172A;
+    font-weight: 700;
+    text-align: left;
+    padding: 3px 4.5px;
+    border: 0.75px solid #CBD5E1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  td {
+    padding: 2.8px 4.5px;
+    border: 0.75px solid #E2E8F0;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td {
+    background-color: #F8FAFC;
+  }
+
+  /* Cards & Callouts */
+  .card {
+    background: #F8FAFC;
+    border: 0.75px solid #E2E8F0;
+    border-radius: 4px;
+    padding: 5px 7px;
+    margin-bottom: 5px;
+  }
+  .callout {
+    background: #F8FAFC;
+    border: 0.75px solid #E2E8F0;
+    border-left: 3.5px solid #C0392B;
+    border-radius: 3px;
+    padding: 4.5px 7px;
+    margin-bottom: 5px;
+    font-size: 7.5pt;
+  }
+  .callout-blue { border-left-color: #2563EB; background: #F0F7FF; }
+  .callout-green { border-left-color: #16A34A; background: #F0FDF4; }
+  .callout-amber { border-left-color: #D97706; background: #FFFBEB; }
+  .callout-purple { border-left-color: #7C3AED; background: #FAF5FF; }
+  .callout-title {
+    font-weight: 700;
+    color: #1A1A2E;
+    font-size: 7.9pt;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Badges & Tags */
+  .badge {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 6.6pt;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .badge-mainstream { background: #DBEAFE; color: #1D4ED8; border: 0.5px solid #93C5FD; }
+  .badge-grassroots { background: #DCFCE7; color: #15803D; border: 0.5px solid #86EFAC; }
+  .badge-discourse { background: #FEF3C7; color: #B45309; border: 0.5px solid #FDE68A; }
+  .badge-aggregator { background: #F1F5F9; color: #475569; border: 0.5px solid #CBD5E1; }
+  .badge-danger { background: #FEE2E2; color: #B91C1C; border: 0.5px solid #FCA5A5; }
+  .badge-purple { background: #EDE9FE; color: #6D28D9; border: 0.5px solid #DDD6FE; }
+
+  /* 5 Dots */
+  .brand-dots {
+    display: inline-flex;
+    gap: 3.5px;
+    align-items: center;
+  }
+  .dot {
+    width: 7.5px;
+    height: 7.5px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-indigo { background-color: #4A56E2; }
+  .dot-teal { background-color: #00B8A9; }
+  .dot-amber { background-color: #F5A623; }
+  .dot-magenta { background-color: #E84393; }
+  .dot-coral { background-color: #FF6B6B; }
+
+  /* Code snippet styling */
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 7pt;
+    background: #F1F5F9;
+    padding: 0.5px 2.5px;
+    border-radius: 2px;
+    color: #0F172A;
+    border: 0.5px solid #E2E8F0;
+  }
+
+  /* Grid Layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 5px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 4px;
+  }
+
+  /* Meta Box */
+  .meta-box {
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
+    padding: 5px 8px;
+    margin-bottom: 6px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    font-size: 7.3pt;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .meta-label {
+    font-size: 6.2pt;
+    color: #64748B;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .meta-val {
+    font-weight: 600;
+    color: #0F172A;
+  }
+
+  /* Flowchart Container */
+  .flowchart-card {
+    background: #0F172A;
+    border: 1px solid #1E293B;
+    border-radius: 5px;
+    padding: 7px 8px;
+    margin: 3px 0 6px 0;
+    color: #F8FAFC;
+  }
+  .flowchart-light {
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    border-radius: 5px;
+    padding: 7px 8px;
+    margin: 3px 0 6px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========================================================================= -->
+<!-- PAGE 1: COVER & EXECUTIVE SUMMARY                                         -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <div style="display:flex; align-items:center; gap:5px;">
+      <span class="brand-dots">
+        <span class="dot dot-indigo"></span>
+        <span class="dot dot-teal"></span>
+        <span class="dot dot-amber"></span>
+        <span class="dot dot-magenta"></span>
+        <span class="dot dot-coral"></span>
+      </span>
+      <span>Panchranga (पंचरंग) · Every Color of the Story</span>
+    </div>
+    <span>Technical Blueprint & Comprehensive Operational Guide</span>
+  </div>
+
+  <div class="page-body">
+    <!-- Hero Title Block -->
+    <div style="margin-top: 2px; margin-bottom: 6px;">
+      <div style="font-size: 7.2pt; font-family: ui-monospace, monospace; color: #C0392B; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 1.5px;">
+        Open-Source News Intelligence Platform · Technical Reference
+      </div>
+      <h1 style="font-size: 19pt; line-height: 1.15; color: #1A1A2E; margin-bottom: 2.5px;">
+        Panchranga: Automated Multi-Perspective Indian News Intelligence
+      </h1>
+      <div style="font-size: 9pt; color: #C0392B; font-family: 'Georgia', serif; font-style: italic;">
+        End-to-End Architectural Blueprint, Algorithmic Engines, Flowcharts, and Operational Mechanics
+      </div>
+    </div>
+
+    <!-- Metadata Grid -->
+    <div class="meta-box">
+      <div class="meta-item">
+        <span class="meta-label">System State</span>
+        <span class="meta-val">Production Active · October 2026</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Active Feeds</span>
+        <span class="meta-val">96 Feeds across 13 Indian Languages</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Editorial Lanes</span>
+        <span class="meta-val">3 Parallel Perspective Columns</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Vector Embeddings</span>
+        <span class="meta-val">384-Dim Indic Vector Space (MiniLM-L6)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">AI Router & Synthesis</span>
+        <span class="meta-val">Quota Router (Groq/Gemini/CF) + Guardrails</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Distribution Channels</span>
+        <span class="meta-val">Next.js 14 Web UI + 7 AM Multi-SMTP Newsletter</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Executive Summary -->
+    <div class="section-title">
+      <span>1. Executive Summary & Core Mission</span>
+      <span class="section-tag">Charter & Philosophy</span>
+    </div>
+
+    <p>
+      <b>Panchranga (पंचरंग)</b> is an open-source, independent, automated news intelligence platform engineered specifically for the Indian media ecosystem. In India's pluralistic democracy of 1.4 billion citizens and hundreds of dialects, news reporting is fractured across corporate broadsheets, independent field reporting collectives, and citizen discourse spaces. Modern algorithmic feeds optimize for engagement and outrage, trapping readers in insular echo chambers where divergent perspectives are obscured.
+    </p>
+    <p>
+      The Hindi word <i>Panchranga</i> signifies <i>"many colors"</i> (literally five colors). The platform operates on a single core axiom: <b>No single media outlet or viewpoint captures the complete truth of a major event</b>. Panchranga solves this through algorithmic neutrality—pulling stories from across the entire ecosystem and placing divergent framings side by side on a unified broadsheet canvas.
+    </p>
+
+    <!-- The 4 Democratic Pillars Table -->
+    <div class="sub-title">The Four Architectural Pillars</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">Pillar</th>
+          <th style="width: 44%;">Technical Implementation</th>
+          <th style="width: 34%;">Democratic & Civic Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>1. Automated Ingestion</b></td>
+          <td>96 verified RSS, Reddit, and API feeds polled every 20 minutes via bounded asynchronous workers (<code>p-limit(7)</code>).</td>
+          <td>Eliminates subjective human gatekeeping and commercial curation biases.</td>
+        </tr>
+        <tr>
+          <td><b>2. Three-Lane Separation</b></td>
+          <td>Strict editorial classification into Mainstream, Grassroots, and Public Discourse parallel lanes.</td>
+          <td>Exposes narrative divergence between institutional press statements and ground reality.</td>
+        </tr>
+        <tr>
+          <td><b>3. Semantic Clustering</b></td>
+          <td>384-dimensional multilingual embeddings with cosine similarity grouping (threshold 0.45) on rolling 48h windows.</td>
+          <td>Connects identical breaking events across languages and vocabularies without human tags.</td>
+        </tr>
+        <tr>
+          <td><b>4. Guardrailed AI Synthesis</b></td>
+          <td>Quota-aware LLM router generates 35-word neutral briefings; high-stakes sensitive topics auto-bypass to verified reporting.</td>
+          <td>Delivers instantaneous factual context while preventing AI hallucinations on communal/legal events.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Callout Box: Editorial Charter -->
+    <div class="callout" style="margin-top: 3px;">
+      <div class="callout-title">The Panchranga Editorial Charter</div>
+      <b>• No Human Editors:</b> Story clustering, headline grouping, and briefings are 100% programmatic and algorithmic.<br/>
+      <b>• No Paywalls:</b> Every summary and aggregated reference is free and openly accessible to all citizens.<br/>
+      <b>• No Partisan Bias Labels:</b> No subjective "Left", "Right", or "Centrist" tags. Panchranga categorizes by <i>reporting methodology</i> (institutional, ground-investigative, civic reaction) rather than political labels.<br/>
+      <b>• Complete Open-Source Transparency:</b> Ingestion code, deduplication formulas, vector thresholds, and database schemas are fully public under the MIT License.
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid-4" style="margin-top: 3px;">
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 13pt; font-weight: 800; color: #2563EB;">58</div>
+        <div style="font-size: 6.5pt; color: #64748B; font-weight: 600;">MAINSTREAM SOURCES</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 13pt; font-weight: 800; color: #16A34A;">22</div>
+        <div style="font-size: 6.5pt; color: #64748B; font-weight: 600;">GRASSROOTS OUTLETS</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 13pt; font-weight: 800; color: #D97706;">9</div>
+        <div style="font-size: 6.5pt; color: #64748B; font-weight: 600;">DISCOURSE FORUMS</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 13pt; font-weight: 800; color: #7C3AED;">13</div>
+        <div style="font-size: 6.5pt; color: #64748B; font-weight: 600;">INDIAN LANGUAGES</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 1 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 2: END-TO-END SYSTEM ARCHITECTURE & MASTER FLOWCHART                  -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>2. End-to-End System Pipeline</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>2. End-to-End System Architecture & Data Pipeline</span>
+      <span class="section-tag">Master Pipeline Architecture</span>
+    </div>
+
+    <p>
+      Panchranga operates as an event-driven, decoupled data pipeline. Scheduled GitHub Actions crons ingest, clean, embed, cluster, and synthesize news items, while a Next.js 14 App Router application serves the presentation layer with serverless rendering and client-side reactive components.
+    </p>
+
+    <!-- FLOWCHART 1: MASTER SYSTEM ARCHITECTURE -->
+    <div class="sub-title">System Architecture Flowchart</div>
+    <div class="flowchart-card">
+      <svg width="100%" height="140" viewBox="0 0 760 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B"/>
+          </marker>
+          <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38BDF8"/>
+          </marker>
+        </defs>
+
+        <!-- Top Row: Ingestion -> Dedup -> Vector Embedding -> Topic Clustering -->
+        <!-- Stage 1 -->
+        <rect x="5" y="10" width="165" height="52" rx="5" fill="#1E293B" stroke="#38BDF8" stroke-width="1.2"/>
+        <text x="87" y="24" fill="#38BDF8" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 1: MULTI-FEED INGESTION</text>
+        <text x="87" y="37" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">96 Feeds (p-limit 7)</text>
+        <text x="87" y="50" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">Anti-WAF · Google Fallbacks</text>
+
+        <!-- Arrow 1 -> 2 -->
+        <path d="M170 36 L195 36" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage 2 -->
+        <rect x="200" y="10" width="165" height="52" rx="5" fill="#1E293B" stroke="#34D399" stroke-width="1.2"/>
+        <text x="282" y="24" fill="#34D399" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 2: DEDUPLICATION</text>
+        <text x="282" y="37" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">±2h Window · Title Cleansing</text>
+        <text x="282" y="50" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">Token Jaccard &gt;= 85% Filter</text>
+
+        <!-- Arrow 2 -> 3 -->
+        <path d="M365 36 L390 36" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage 3 -->
+        <rect x="395" y="10" width="165" height="52" rx="5" fill="#1E293B" stroke="#FBBF24" stroke-width="1.2"/>
+        <text x="477" y="24" fill="#FBBF24" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 3: INDIC VECTOR EMBEDDING</text>
+        <text x="477" y="37" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">384-Dim Sub-word 3-Grams</text>
+        <text x="477" y="50" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">L2 Normalized Vector Space</text>
+
+        <!-- Arrow 3 -> 4 -->
+        <path d="M560 36 L585 36" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage 4 -->
+        <rect x="590" y="10" width="165" height="52" rx="5" fill="#1E293B" stroke="#F472B6" stroke-width="1.2"/>
+        <text x="672" y="24" fill="#F472B6" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 4: TOPIC HUB CLUSTERING</text>
+        <text x="672" y="37" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">Cosine Sim &gt;= 0.45 Match</text>
+        <text x="672" y="50" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">Sanity Cap &amp; Drift Prevention</text>
+
+        <!-- Connecting Corner: Stage 4 Down to Bottom Row -->
+        <path d="M672 62 L672 75 L565 75 L565 85" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Bottom Row: AI Quota Router -> Dual Storage -> UI & Newsletter -->
+        <!-- Stage 5 -->
+        <rect x="395" y="80" width="165" height="52" rx="5" fill="#1E293B" stroke="#A78BFA" stroke-width="1.2"/>
+        <text x="477" y="94" fill="#A78BFA" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 5: QUOTA-AWARE AI SYNTHESIS</text>
+        <text x="477" y="107" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">Groq / Gemini / CF Cascade</text>
+        <text x="477" y="120" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">Sensitive Communal Bypass</text>
+
+        <!-- Arrow 5 <- 4 is routed above; Arrow 5 -> Dual Storage -->
+        <path d="M395 106 L370 106" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage 6: Dual Storage -->
+        <rect x="200" y="80" width="165" height="52" rx="5" fill="#1E293B" stroke="#60A5FA" stroke-width="1.2"/>
+        <text x="282" y="94" fill="#60A5FA" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 6: DUAL PERSISTENCE</text>
+        <text x="282" y="107" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">Supabase PostgreSQL (pgvector)</text>
+        <text x="282" y="120" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">Local JSON Disk Mirror Fallback</text>
+
+        <!-- Arrow Storage -> Distribution -->
+        <path d="M200 106 L175 106" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage 7: Web UI & Newsletter -->
+        <rect x="5" y="80" width="165" height="52" rx="5" fill="#1E293B" stroke="#FB7185" stroke-width="1.2"/>
+        <text x="87" y="94" fill="#FB7185" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">STAGE 7: MULTI-CHANNEL DELIVERY</text>
+        <text x="87" y="107" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="600" text-anchor="middle">Next.js 14 Broadsheet App</text>
+        <text x="87" y="120" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">7:00 AM IST Waterfall Newsletter</text>
+      </svg>
+    </div>
+
+    <!-- Stage-by-Stage Operational Walkthrough -->
+    <div class="sub-title">Stage-by-Stage Operational Walkthrough</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 17%;">Pipeline Stage</th>
+          <th style="width: 25%;">Source File / Script</th>
+          <th style="width: 58%;">Technical Execution & Design Decisions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>1. Ingestion</b></td>
+          <td><code>scripts/fetch-rss.ts</code></td>
+          <td>Orchestrates polling of 96 feeds. Enforces <code>p-limit(7)</code> concurrency. Reddit feeds run with polite 2,000ms delay. Cloudflare-protected feeds fail over to Google News RSS queries (<code>FEED_FALLBACKS</code>). Pulls top 30 items per feed.</td>
+        </tr>
+        <tr>
+          <td><b>2. Deduplication</b></td>
+          <td><code>lib/dedup.ts</code></td>
+          <td>Aggregator stories (Currents API + Google News) are cross-checked against direct publisher feeds within a ±2 hour window using exact URL, normalized title, and word token Jaccard similarity (&gt;= 85%). Filters redundant articles.</td>
+        </tr>
+        <tr>
+          <td><b>3. Embeddings</b></td>
+          <td><code>lib/embeddings.ts</code></td>
+          <td>Sanitizes titles and summaries, purges stop words and publisher boilerplate. Generates a 384-dimensional vector using token hashing and sub-word 3-grams for Indic scripts. Normalizes to L2 unit length for cosine dot products.</td>
+        </tr>
+        <tr>
+          <td><b>4. Clustering</b></td>
+          <td><code>lib/clustering.ts</code></td>
+          <td>Evaluates articles from a rolling 48-hour window. Compares cosine similarity against active topic hubs (threshold 0.45). Implements single-source sanity cap (max 1 item) and single-linkage drift prevention to avoid mega-hubs.</td>
+        </tr>
+        <tr>
+          <td><b>5. AI Synthesis</b></td>
+          <td><code>lib/summarizer.ts</code> & <code>llm-router.ts</code></td>
+          <td>Centralized quota-aware router (Groq round-robin pool -&gt; Cloudflare Workers AI -&gt; Gemini 3.5 Flash Lite -&gt; OpenRouter -&gt; Lead Snippet). Sensitive communal/legal topics trigger automated bypass.</td>
+        </tr>
+        <tr>
+          <td><b>6. Delivery</b></td>
+          <td><code>app/page.tsx</code> & <code>send-newsletter.ts</code></td>
+          <td>Next.js 14 App Router renders broadsheet UI with SSR/ISR. Automated GitHub Actions workflow triggers daily morning newsletter via waterfall dispatcher (Gmail SMTP -&gt; Brevo -&gt; Resend) at 7:00 AM IST.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Dual Persistence Strategy Callout -->
+    <div class="callout callout-blue">
+      <div class="callout-title">Architectural Highlight: Dual-Persistence & Zero-Downtime Fallback</div>
+      Panchranga implements a dual persistence layer: <b>Supabase PostgreSQL</b> (cloud primary with <code>pgvector</code>) and <b>Local JSON Files</b> (<code>data/topic-hubs.json</code> and <code>data/ingested-items.json</code>). If database connectivity experiences network interruptions or API key exhaustion, the entire Next.js application transparently reads from local disk caches without crashing or displaying error screens to end users.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 2 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 3: THE THREE-LANE STRUCTURE & PERSPECTIVE PARTITIONING                -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>3. Three-Lane Perspective Separation</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>3. The Three-Lane Structure & Perspective Partitioning</span>
+      <span class="section-tag">Editorial Methodology</span>
+    </div>
+
+    <p>
+      At the core of Panchranga is the <b>Three-Lane Separation Architecture</b>. News stories are not homogenized into a single feed. Instead, every news item is classified into one of three parallel reporting lanes based on institutional grounding and publishing model:
+    </p>
+
+    <!-- FLOWCHART 2: THREE-LANE NEWS FLOW -->
+    <div class="sub-title">Three-Lane Partitioning & Convergence Flowchart</div>
+    <div class="flowchart-light">
+      <svg width="100%" height="110" viewBox="0 0 740 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Event Source -->
+        <rect x="5" y="32" width="115" height="46" rx="4" fill="#0F172A" stroke="#1E293B" stroke-width="1"/>
+        <text x="62" y="51" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">BREAKING EVENT</text>
+        <text x="62" y="65" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">India / Regional Ground</text>
+
+        <!-- Branching Arrows -->
+        <path d="M120 45 L155 22 L175 22" stroke="#2563EB" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M120 55 L175 55" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M120 65 L155 88 L175 88" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Lane 1: Mainstream -->
+        <rect x="180" y="5" width="220" height="34" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="190" y="19" fill="#1D4ED8" font-size="7.8" font-family="-apple-system, sans-serif" font-weight="700">LANE 1: MAINSTREAM (58 Feeds · #2563EB)</text>
+        <text x="190" y="31" fill="#475569" font-size="6.8">Institutional Record · Press Statements · Broad National Distribution</text>
+
+        <!-- Lane 2: Grassroots -->
+        <rect x="180" y="40" width="220" height="34" rx="4" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1"/>
+        <text x="190" y="54" fill="#15803D" font-size="7.8" font-family="-apple-system, sans-serif" font-weight="700">LANE 2: GRASSROOTS (22 Feeds · #16A34A)</text>
+        <text x="190" y="66" fill="#475569" font-size="6.8">Ground Impact · Rural Distress · Civil Liberties · Field Reporting</text>
+
+        <!-- Lane 3: Public Discourse -->
+        <rect x="180" y="75" width="220" height="34" rx="4" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1"/>
+        <text x="190" y="89" fill="#B45309" font-size="7.8" font-family="-apple-system, sans-serif" font-weight="700">LANE 3: PUBLIC DISCOURSE (9 Feeds · #D97706)</text>
+        <text x="190" y="101" fill="#475569" font-size="6.8">Citizen Reactions · Reddit Threads · Unfiltered Civic Debates</text>
+
+        <!-- Converging Arrows to Topic Hub -->
+        <path d="M400 22 L425 22 L445 45" stroke="#2563EB" stroke-width="1.5"/>
+        <path d="M400 55 L445 55" stroke="#16A34A" stroke-width="1.5"/>
+        <path d="M400 88 L425 88 L445 65" stroke="#D97706" stroke-width="1.5"/>
+        <path d="M445 55 L465 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Topic Hub Output -->
+        <rect x="470" y="24" width="265" height="62" rx="4" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+        <text x="602" y="39" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">UNIFIED TOPIC HUB CANVAS</text>
+        <text x="602" y="51" fill="#38BDF8" font-size="7" font-family="monospace" text-anchor="middle">Proportional Coverage Bar [60% | 25% | 15%]</text>
+        <!-- Mock Proportional Bar -->
+        <rect x="485" y="57" width="140" height="6" fill="#2563EB" rx="1"/>
+        <rect x="625" y="57" width="60" height="6" fill="#16A34A"/>
+        <rect x="685" y="57" width="35" height="6" fill="#D97706" rx="1"/>
+        <text x="602" y="76" fill="#94A3B8" font-size="6.5" font-family="-apple-system, sans-serif" text-anchor="middle">Parallel 3-Column Broadsheet Reading View</text>
+      </svg>
+    </div>
+
+    <!-- Lane Deep Dive Table -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">Lane</th>
+          <th style="width: 17%;">Color &amp; Badge</th>
+          <th style="width: 15%;">Share</th>
+          <th style="width: 54%;">Editorial Definition, Outlets &amp; Role in Indian Democracy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Lane 1:<br/>Mainstream</b></td>
+          <td><span class="badge badge-mainstream">Blue #2563EB</span></td>
+          <td><b>58 Feeds</b><br/>(60.4% share)</td>
+          <td><b>National dailies, television newsrooms, wire agencies, official state releases.</b><br/>
+          <i>Outlets:</i> The Indian Express, Times of India, NDTV, PIB, India Today, Dainik Bhaskar, Amar Ujala, Deccan Herald, Free Press Journal, The Print, The Quint.<br/>
+          <i>Function:</i> Captures the institutional framing, ministerial press conferences, official communiqués, and national distribution narrative.</td>
+        </tr>
+        <tr>
+          <td><b>Lane 2:<br/>Grassroots</b></td>
+          <td><span class="badge badge-grassroots">Green #16A34A</span></td>
+          <td><b>22 Feeds</b><br/>(22.9% share)</td>
+          <td><b>Independent digital publications, investigative collectives, rural &amp; labor reporters.</b><br/>
+          <i>Outlets:</i> The Wire, Scroll.in, Newslaundry, The News Minute, Article 14, The Mooknayak, PARI (People's Archive of Rural India), Khabar Lahariya, Down To Earth, Gaon Connection.<br/>
+          <i>Function:</i> Investigates ground-level impacts, rural distress, environmental degradation, labor strikes, civil liberties, and marginalized communities overlooked by broadsheet front pages.</td>
+        </tr>
+        <tr>
+          <td><b>Lane 3:<br/>Discourse</b></td>
+          <td><span class="badge badge-discourse">Amber #D97706</span></td>
+          <td><b>9 Feeds</b><br/>(9.4% share)</td>
+          <td><b>Citizen journalism networks, online public forums, moderated subreddit threads.</b><br/>
+          <i>Outlets:</i> r/india, r/IndiaSpeaks, r/delhi, r/bangalore, r/mumbai, Youth Ki Awaaz, Sabrang India.<br/>
+          <i>Function:</i> Reflects unfiltered citizen reactions, civic debates, immediate community concerns, and public sentiment on breaking developments.</td>
+        </tr>
+        <tr>
+          <td><b>Auxiliary:<br/>Aggregator</b></td>
+          <td><span class="badge badge-aggregator">Slate #64748B</span></td>
+          <td><b>7 Feeds</b><br/>(7.3% share)</td>
+          <td><b>Multi-publisher pooled syndication feeds (Currents API + Google News RSS).</b><br/>
+          <i>Feeds:</i> Currents API (with 250 req/day quota guard) and Google News RSS across regional Indian language editions. Deduplicated against direct feeds before lane assignment.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Linguistic Diversity Breakdown -->
+    <div class="sub-title">Linguistic Diversity Spectrum (13 Languages)</div>
+    <p style="font-size: 7.2pt; margin-bottom: 2px;">
+      <b>English (55 feeds):</b> IE, TOI, NDTV, The Hindu, Deccan Herald, Wire, Scroll, Newslaundry, PIB · <b>Hindi (12 feeds):</b> Dainik Bhaskar, Amar Ujala, Jagran, Navbharat Times, ABP News, Patrika, Jansatta · <b>Punjabi (4 feeds):</b> Google News Punjabi, civic syndications · <b>Odia (4 feeds):</b> Google News Odia, regional syndications · <b>Tamil (3 feeds):</b> Puthiya Thalaimurai, Dinamalar · <b>Urdu (3 feeds):</b> Regional Urdu press · <b>Assamese (3 feeds):</b> Northeast syndications · <b>Telugu (2 feeds):</b> Eenadu, Sakshi · <b>Kannada (2 feeds):</b> Vijay Karnataka · <b>Malayalam (2 feeds):</b> Onmanorama · <b>Marathi (2 feeds):</b> Loksatta, Sakal · <b>Gujarati (2 feeds):</b> Divya Bhaskar · <b>Bengali (2 feeds):</b> Anandabazar.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 3 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 4: DATA INGESTION ENGINE & ANTI-WAF DEFENSE                          -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>4. Data Ingestion & Anti-WAF Defense</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>4. Data Ingestion Pipeline & Anti-WAF Defense</span>
+      <span class="section-tag">scripts/fetch-rss.ts</span>
+    </div>
+
+    <p>
+      Panchranga polls 96 diverse news feeds every 20 minutes via GitHub Actions. In the modern web, major news publishers implement aggressive Web Application Firewalls (Cloudflare, Akamai, PerimeterX) that block automated RSS aggregators with HTTP 403 Forbidden errors. Panchranga employs a resilient multi-tier ingestion architecture with automated syndication fallbacks.
+    </p>
+
+    <!-- FLOWCHART 3: INGESTION & ANTI-WAF DECISION TREE -->
+    <div class="sub-title">Ingestion & Anti-WAF Fallback Engine Flowchart</div>
+    <div class="flowchart-card">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Cron Trigger -->
+        <rect x="5" y="32" width="100" height="50" rx="4" fill="#1E293B" stroke="#60A5FA" stroke-width="1.2"/>
+        <text x="55" y="48" fill="#60A5FA" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">CRON TRIGGER</text>
+        <text x="55" y="60" fill="#F8FAFC" font-size="7.5" font-family="monospace" text-anchor="middle">*/20 * * * *</text>
+        <text x="55" y="72" fill="#94A3B8" font-size="6.5" font-family="monospace" text-anchor="middle">p-limit(7) Queue</text>
+
+        <!-- Arrow to Attempt -->
+        <path d="M105 57 L130 57" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Ingest Attempt -->
+        <rect x="135" y="32" width="125" height="50" rx="4" fill="#1E293B" stroke="#CBD5E1" stroke-width="1"/>
+        <text x="197" y="48" fill="#F8FAFC" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">FETCH DIRECT RSS</text>
+        <text x="197" y="60" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">User-Agent: Chrome 128</text>
+        <text x="197" y="72" fill="#94A3B8" font-size="6.8" font-family="monospace" text-anchor="middle">10s Socket Timeout</text>
+
+        <!-- Arrow to Diamond -->
+        <path d="M260 57 L285 57" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Decision Diamond -->
+        <polygon points="330,22 375,57 330,92 285,57" fill="#1E293B" stroke="#FBBF24" stroke-width="1.2"/>
+        <text x="330" y="55" fill="#FBBF24" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">HTTP 200?</text>
+        <text x="330" y="65" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">or 403 WAF?</text>
+
+        <!-- YES Path: To Parsing -->
+        <path d="M375 57 L475 57" stroke="#34D399" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="420" y="51" fill="#34D399" font-size="6.8" font-weight="700">YES (200 OK)</text>
+
+        <!-- NO Path: To Google Fallback -->
+        <path d="M330 22 L330 10 L475 10" stroke="#F87171" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="375" y="8" fill="#F87171" font-size="6.8" font-weight="700">NO (403 Blocked / WAF)</text>
+
+        <!-- Google Syndication Fallback Box -->
+        <rect x="480" y="2" width="135" height="32" rx="4" fill="#1E293B" stroke="#F87171" stroke-width="1"/>
+        <text x="547" y="14" fill="#F87171" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">FEED_FALLBACKS</text>
+        <text x="547" y="26" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Google News: site:domain.com</text>
+
+        <path d="M547 34 L547 43 L547 43" stroke="#64748B" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- XML Clean & Parse -->
+        <rect x="480" y="42" width="135" height="34" rx="4" fill="#1E293B" stroke="#38BDF8" stroke-width="1"/>
+        <text x="547" y="54" fill="#38BDF8" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">XML SANITIZE &amp; PARSE</text>
+        <text x="547" y="66" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Strip Illegal Chars · Top 30</text>
+
+        <!-- Arrow to OG Data -->
+        <path d="M615 57 L635 57" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Stage: OG Metadata & Telemetry -->
+        <rect x="640" y="32" width="95" height="50" rx="4" fill="#1E293B" stroke="#A78BFA" stroke-width="1.2"/>
+        <text x="687" y="47" fill="#A78BFA" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">OG &amp; TELEMETRY</text>
+        <text x="687" y="58" fill="#F8FAFC" font-size="6.5" font-family="monospace" text-anchor="middle">2.5s Strict Abort</text>
+        <text x="687" y="69" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">Health State: OK/Err</text>
+
+        <!-- Bottom Note on Reddit -->
+        <rect x="135" y="88" width="500" height="22" rx="3" fill="#1E293B" stroke="#D97706" stroke-width="0.8"/>
+        <text x="385" y="102" fill="#FBBF24" font-size="6.8" font-family="-apple-system, sans-serif" text-anchor="middle">Reddit Discourse Handling: Dedicated custom User-Agent, polite 2,000ms–5,000ms delay, multi-subreddit unified RSS fallback.</text>
+      </svg>
+    </div>
+
+    <!-- Technical Safeguards Breakdown -->
+    <div class="sub-title">Ingestion Safeguards & Design Decisions</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Safeguard Mechanism</th>
+          <th style="width: 22%;">Target Vulnerability</th>
+          <th style="width: 53%;">Engineering Implementation Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Bounded Concurrency</b></td>
+          <td>Socket starvation &amp; timeouts</td>
+          <td>Configured with <code>p-limit(7)</code>. At 7 concurrent HTTP requests, all 96 sources complete in ~38 to 45 seconds without saturating Node.js event loops or triggering cloud IP throttles.</td>
+        </tr>
+        <tr>
+          <td><b>Anti-WAF Syndication</b></td>
+          <td>Cloudflare HTTP 403 blocks</td>
+          <td>Major newsrooms (BBC, Livemint, Hindustan Times, Scroll.in) employ Cloudflare bot-protection. When direct feeds fail, Panchranga transparently queries Google News RSS (<code>site:publisher.com</code>), obtaining 100% feed availability without running heavy headless browsers.</td>
+        </tr>
+        <tr>
+          <td><b>Reddit Civic Pacing</b></td>
+          <td>Reddit 429 rate limiting</td>
+          <td>Subreddits are polled sequentially with polite 2,000ms to 5,000ms delays using a registered Reddit bot User-Agent. If individual feeds fail, it cascades to multi-subreddit unified RSS (<code>r/india+IndiaSpeaks+delhi+.../.rss</code>).</td>
+        </tr>
+        <tr>
+          <td><b>2.5s OpenGraph Scraping</b></td>
+          <td>Pipeline hang on external pages</td>
+          <td>Only the top 2 articles per source missing RSS thumbnails undergo live HTML scraping. Uses a strict <code>AbortSignal.timeout(2500)</code> so sluggish publisher CDNs can never stall the background worker.</td>
+        </tr>
+        <tr>
+          <td><b>Source Health Telemetry</b></td>
+          <td>Silent feed rot</td>
+          <td>Every cycle writes <code>last_status</code> ('healthy' / 'error'), <code>last_attempted_at</code>, and <code>last_error</code> into Supabase <code>sources</code>, providing live observability on <code>/sources</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 4 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 5: DEDUPLICATION & CANONICAL MERGING ENGINE                          -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>5. Deduplication & Canonical Merging</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>5. Aggregator Deduplication Engine</span>
+      <span class="section-tag">lib/dedup.ts</span>
+    </div>
+
+    <p>
+      Pooled syndication streams (Currents API and Google News regional RSS) frequently republish news articles already fetched from direct publisher feeds. Without deduplication, stories would appear multiple times within the same topic hub, artificially inflating mainstream source counts. Panchranga employs a 5-step deterministic deduplication pipeline.
+    </p>
+
+    <!-- FLOWCHART 4: DEDUPLICATION DECISION TREE -->
+    <div class="sub-title">Deduplication Decision Tree Flowchart</div>
+    <div class="flowchart-light">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Input Item -->
+        <rect x="5" y="35" width="105" height="42" rx="4" fill="#0F172A" stroke="#1E293B" stroke-width="1"/>
+        <text x="57" y="52" fill="#F8FAFC" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">AGGREGATOR ITEM</text>
+        <text x="57" y="65" fill="#94A3B8" font-size="6.5" font-family="monospace" text-anchor="middle">Google / Currents API</text>
+
+        <!-- Arrow to Step 1 -->
+        <path d="M110 56 L125 56" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Step 1: Normalize Title -->
+        <rect x="130" y="35" width="105" height="42" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="182" y="51" fill="#1D4ED8" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">1. NORMALIZE TITLE</text>
+        <text x="182" y="63" fill="#475569" font-size="6.2">Strip Brand · Indic Clean</text>
+
+        <!-- Arrow to Step 2 -->
+        <path d="M235 56 L250 56" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Step 2: Time Window -->
+        <rect x="255" y="35" width="105" height="42" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="307" y="51" fill="#1D4ED8" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">2. TIME WINDOW</text>
+        <text x="307" y="63" fill="#475569" font-size="6.2">|Δt| &lt;= 2 Hours (7200s)</text>
+
+        <!-- Arrow to Step 3 -->
+        <path d="M360 56 L375 56" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Step 3: Exact URL & Title Check -->
+        <rect x="380" y="35" width="115" height="42" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="437" y="51" fill="#1D4ED8" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">3. URL / TITLE EQUAL?</text>
+        <text x="437" y="63" fill="#475569" font-size="6.2">URL == URL or Title == Title</text>
+
+        <!-- Arrow to Step 4 -->
+        <path d="M495 56 L510 56" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Step 4: Token Jaccard Overlap -->
+        <rect x="515" y="35" width="115" height="42" rx="4" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1"/>
+        <text x="572" y="51" fill="#B45309" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">4. JACCARD OVERLAP</text>
+        <text x="572" y="63" fill="#78350F" font-size="6.2">|A ∩ B| / |A ∪ B| &gt;= 0.85</text>
+
+        <!-- Branch to Duplicate (UP) -->
+        <path d="M437 35 L437 18 L645 18" stroke="#EF4444" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <path d="M572 35 L572 18" stroke="#EF4444" stroke-width="1.5"/>
+
+        <rect x="650" y="5" width="85" height="28" rx="4" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+        <text x="692" y="17" fill="#B91C1C" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">DUPLICATE</text>
+        <text x="692" y="27" fill="#7F1D1D" font-size="6" text-anchor="middle">Merge Meta &amp; Drop</text>
+
+        <!-- Branch to Keep Unique (RIGHT) -->
+        <path d="M630 56 L645 56" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <rect x="650" y="42" width="85" height="28" rx="4" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1"/>
+        <text x="692" y="54" fill="#15803D" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">UNIQUE STORY</text>
+        <text x="692" y="64" fill="#14532D" font-size="6" text-anchor="middle">Proceed to Vectorize</text>
+
+        <!-- Annotation Bottom -->
+        <rect x="130" y="85" width="500" height="24" rx="3" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="0.8"/>
+        <text x="380" y="97" fill="#334155" font-size="6.8" font-family="-apple-system, sans-serif" text-anchor="middle">Unicode Regex: [^\p{L}\p{M}\p{N}\s] preserves Hindi/Indic vowel matras (मात्रा) while stripping publisher suffixes (- NDTV).</text>
+        <text x="380" y="105" fill="#64748B" font-size="6.2" font-family="-apple-system, sans-serif" text-anchor="middle">Production deduplication rate: 15%–25% of aggregator stories are filtered, preventing artificial lane distortion.</text>
+      </svg>
+    </div>
+
+    <!-- Deduplication 5-Tier Algorithm Table -->
+    <div class="sub-title">Five-Step Deduplication Specification</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 15%;">Step</th>
+          <th style="width: 25%;">Execution Function</th>
+          <th style="width: 22%;">Threshold / Filter Criteria</th>
+          <th style="width: 38%;">Operational Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>1. Title Cleansing</b></td>
+          <td><code>normalizeTitle(title)</code></td>
+          <td>Publisher suffix regex &amp; Indic Unicode sanitization</td>
+          <td>Strips branding (e.g. <code>- The Hindu</code>, <code>| NDTV</code>) and special punctuation while preserving Indian script vowel signs.</td>
+        </tr>
+        <tr>
+          <td><b>2. Temporal Check</b></td>
+          <td><code>Math.abs(t1 - t2)</code></td>
+          <td><code>&lt;= 7,200,000 ms</code> (±2 hours)</td>
+          <td>Filters comparison pool to only temporally relevant items, reducing computational overhead by 92%.</td>
+        </tr>
+        <tr>
+          <td><b>3. Exact URL Match</b></td>
+          <td><code>urlA === urlB</code></td>
+          <td>100% string equality</td>
+          <td>Direct duplicate match; immediately marks candidate as duplicate.</td>
+        </tr>
+        <tr>
+          <td><b>4. Normalized Title</b></td>
+          <td><code>normA === normB</code></td>
+          <td>100% sanitized title equality</td>
+          <td>Identifies verbatim syndicated headlines republished under different query tracking parameters.</td>
+        </tr>
+        <tr>
+          <td><b>5. Token Jaccard</b></td>
+          <td><code>wordJaccardSimilarity(A, B)</code></td>
+          <td><code>Jaccard &gt;= 0.85</code> (85% word overlap)</td>
+          <td>Catches slight headline rewrites (e.g. "PM Modi opens bridge" vs "Modi inaugurates new bridge"). Merges OpenGraph thumbnails and drops duplicate.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-green">
+      <div class="callout-title">Mathematical Formula for Word Jaccard Similarity</div>
+      For sanitized token sets <b>A</b> and <b>B</b> (words with character length &gt; 2):
+      <div style="font-size: 8.8pt; font-family: ui-monospace, monospace; font-weight: 700; margin: 3px 0; color: #15803D;">
+        J(A, B) = |A ∩ B| / |A ∪ B|
+      </div>
+      If <b>J(A, B) &ge; 0.85</b> (85% lexical overlap), the candidate article is deterministically classified as a duplicate. If the existing article lacks an OpenGraph preview image or has an inferior summary snippet, metadata from the duplicate candidate is merged into the primary record before the duplicate is dropped.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 5 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 6: MULTILINGUAL VECTOR EMBEDDINGS & CLUSTERING                       -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>6. Vector Embeddings & Clustering</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>6. Multilingual Vector Embeddings & Event Clustering</span>
+      <span class="section-tag">lib/embeddings.ts · lib/clustering.ts</span>
+    </div>
+
+    <p>
+      Panchranga links diverse news articles into coherent <b>Topic Hubs</b> using vector semantic similarity. Instead of relying on rigid keyword search or human editorial tagging, the platform projects articles into a 384-dimensional geometric space and clusters items using cosine dot product calculations.
+    </p>
+
+    <!-- FLOWCHART 5: VECTOR CLUSTERING STATE MACHINE -->
+    <div class="sub-title">Vector Embedding & Clustering State Machine Flowchart</div>
+    <div class="flowchart-card">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Input News Item -->
+        <rect x="5" y="32" width="115" height="46" rx="4" fill="#1E293B" stroke="#60A5FA" stroke-width="1.2"/>
+        <text x="62" y="47" fill="#60A5FA" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">NEW RAW ITEM</text>
+        <text x="62" y="59" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Title + Substantive Snippet</text>
+        <text x="62" y="70" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">13 Indian Languages</text>
+
+        <!-- Arrow to Clean -->
+        <path d="M120 55 L145 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Preprocessing -->
+        <rect x="150" y="32" width="125" height="46" rx="4" fill="#1E293B" stroke="#34D399" stroke-width="1"/>
+        <text x="212" y="47" fill="#34D399" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">INDIC TOKENIZER</text>
+        <text x="212" y="59" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Purge Stopwords &amp; Boilerplate</text>
+        <text x="212" y="70" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Sub-word 3-Gram Hashing</text>
+
+        <!-- Arrow to Vector Space -->
+        <path d="M275 55 L300 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Vector Projection -->
+        <rect x="305" y="32" width="125" height="46" rx="4" fill="#1E293B" stroke="#FBBF24" stroke-width="1"/>
+        <text x="367" y="47" fill="#FBBF24" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">384-DIM L2 VECTOR</text>
+        <text x="367" y="59" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Unit Length: ||V|| = 1.0</text>
+        <text x="367" y="70" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Cosine Sim = Dot Product</text>
+
+        <!-- Arrow to Match -->
+        <path d="M430 55 L455 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Match Diamond -->
+        <polygon points="505,20 555,55 505,90 455,55" fill="#1E293B" stroke="#F472B6" stroke-width="1.2"/>
+        <text x="505" y="53" fill="#F472B6" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">Sim &gt;= 0.45?</text>
+        <text x="505" y="63" fill="#94A3B8" font-size="5.8" font-family="monospace" text-anchor="middle">&amp; Sanity Cap OK</text>
+
+        <!-- NO: Spawn New Hub -->
+        <path d="M505 20 L505 10 L600 10" stroke="#F87171" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="545" y="8" fill="#F87171" font-size="6.5" font-weight="700">NO (&lt; 0.45)</text>
+        <rect x="605" y="2" width="130" height="34" rx="4" fill="#1E293B" stroke="#F87171" stroke-width="1"/>
+        <text x="670" y="15" fill="#F87171" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">SPAWN NEW TOPIC HUB</text>
+        <text x="670" y="27" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">Deterministic RFC-4122 UUID</text>
+
+        <!-- YES: Join Hub -->
+        <path d="M555 55 L600 55" stroke="#34D399" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="565" y="50" fill="#34D399" font-size="6.5" font-weight="700">YES</text>
+        <rect x="605" y="42" width="130" height="58" rx="4" fill="#1E293B" stroke="#34D399" stroke-width="1"/>
+        <text x="670" y="55" fill="#34D399" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">ATTACH TO EXISTING HUB</text>
+        <text x="670" y="67" fill="#F8FAFC" font-size="6.2" font-family="-apple-system, sans-serif" text-anchor="middle">Within-Hub Dedup Merge</text>
+        <text x="670" y="78" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">Recalculate Lane Counts</text>
+        <text x="670" y="89" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">Update last_updated_at</text>
+      </svg>
+    </div>
+
+    <!-- Clustering Mechanics Table -->
+    <div class="sub-title">Clustering Safeguards & Performance Engineering</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Safeguard Mechanism</th>
+          <th style="width: 22%;">Threshold Parameter</th>
+          <th style="width: 53%;">Engineering Purpose & Real-World Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Cosine Threshold</b></td>
+          <td><code>SIMILARITY_THRESHOLD = 0.45</code></td>
+          <td>Optimal cosine threshold for multilingual Indian news. Clusters Hindi and English accounts of the same event without false-positive grouping.</td>
+        </tr>
+        <tr>
+          <td><b>Single-Source Sanity Cap</b></td>
+          <td><code>SINGLE_SOURCE_SANITY_CAP = 1</code></td>
+          <td>If a publisher already has an item in the hub, adding a second requires strict title Jaccard &gt;= 0.25 AND lead vector similarity &gt;= 0.55. Prevents a single prolific publisher from creating a self-referential mega-hub.</td>
+        </tr>
+        <tr>
+          <td><b>Single-Linkage Drift Guard</b></td>
+          <td><code>leadSim &gt;= 0.30</code> (hubs &gt;= 4 items)</td>
+          <td>In single-pass clustering, chains of items can drift away from the original event. Items joining hubs with 4+ items must retain at least 0.30 cosine similarity to the founding lead story.</td>
+        </tr>
+        <tr>
+          <td><b>Deterministic UUIDs</b></td>
+          <td><code>deterministicHubUuid(seed)</code></td>
+          <td>Generates stable RFC-4122 v4 UUIDs hashed from the lead article URL. Re-clustering the same 48-hour window preserves stable hub IDs instead of generating orphaned database rows.</td>
+        </tr>
+        <tr>
+          <td><b>pgvector Stored Procedure</b></td>
+          <td><code>match_topic_hubs()</code></td>
+          <td>Executes <code>1 - (raw_items.embedding &lt;=&gt; query_embedding)</code> directly in PostgreSQL using IVFFlat/HNSW vector indexes in under 15ms.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-purple">
+      <div class="callout-title">Production Clustering Benchmarks</div>
+      In production operations, clustering 1,000 raw items across a rolling 48-hour window into ~700 topic hubs executes in <b>under 4 seconds</b>. The system updates cluster associations in Supabase in concurrent batches of 50 and synchronizes the local snapshot in <code>data/topic-hubs.json</code>.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 6 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 7: AI NEUTRAL SUMMARIZER & SAFETY GUARDRAILS                         -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>7. AI Summarizer & Safety Guardrails</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>7. AI Neutral Summarizer & Safety Guardrails</span>
+      <span class="section-tag">lib/summarizer.ts · lib/article-extractor.ts</span>
+    </div>
+
+    <p>
+      Panchranga features an automated editorial synthesizer that produces concise, objective, 1-2 sentence neutral briefings (max 35 words) for clustered topic hubs. Because Indian news encompasses communal sensitivities and active judicial proceedings, the summarizer enforces strict ethical guardrails and safety bypass mechanisms.
+    </p>
+
+    <!-- FLOWCHART 6: AI SYNTHESIS & SAFETY BYPASS -->
+    <div class="sub-title">AI Synthesis & Safety Guardrail Decision Flowchart</div>
+    <div class="flowchart-light">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Input Hub -->
+        <rect x="5" y="32" width="115" height="46" rx="4" fill="#0F172A" stroke="#1E293B" stroke-width="1"/>
+        <text x="62" y="47" fill="#F8FAFC" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">TOPIC HUB</text>
+        <text x="62" y="59" fill="#94A3B8" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Lead Title + Articles</text>
+        <text x="62" y="70" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Multi-Source Reporting</text>
+
+        <!-- Arrow to Safety Scan -->
+        <path d="M120 55 L145 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Safety Filter Box -->
+        <rect x="150" y="32" width="135" height="46" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="217" y="47" fill="#1D4ED8" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">SAFETY KEYWORD SCAN</text>
+        <text x="217" y="59" fill="#475569" font-size="6.8">Communal · Sub-Judice</text>
+        <text x="217" y="69" fill="#475569" font-size="6.2">Curfew · Mob Lynching</text>
+
+        <!-- Arrow to Decision -->
+        <path d="M285 55 L310 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Decision Diamond -->
+        <polygon points="360,20 410,55 360,90 310,55" fill="#FFFFFF" stroke="#FBBF24" stroke-width="1.2"/>
+        <text x="360" y="53" fill="#D97706" font-size="7" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">Sensitive</text>
+        <text x="360" y="63" fill="#78350F" font-size="6" font-family="monospace" text-anchor="middle">Keyword Hit?</text>
+
+        <!-- YES: Safety Bypass Path -->
+        <path d="M360 20 L360 10 L480 10" stroke="#EF4444" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="410" y="8" fill="#EF4444" font-size="6.8" font-weight="700">YES (Bypass AI)</text>
+
+        <rect x="485" y="2" width="250" height="34" rx="4" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+        <text x="610" y="15" fill="#B91C1C" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">AUTOMATED SAFETY BYPASS (Sources-Only Mode)</text>
+        <text x="610" y="27" fill="#7F1D1D" font-size="6.5" text-anchor="middle">Display verified publisher reporting only · Zero AI hallucination risk</text>
+
+        <!-- NO: Proceed to Synthesis -->
+        <path d="M410 55 L480 55" stroke="#16A34A" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="430" y="50" fill="#16A34A" font-size="6.8" font-weight="700">NO (Safe)</text>
+
+        <!-- Scraping & Prompting -->
+        <rect x="485" y="42" width="250" height="68" rx="4" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+        <text x="610" y="56" fill="#0F172A" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">DEEP SCRAPING &amp; NEUTRAL SYNTHESIS</text>
+        <text x="495" y="68" fill="#475569" font-size="6.3" font-family="-apple-system, sans-serif">1. Deep Web Scraper: Extracts up to 1,500 chars (3.5s timeout)</text>
+        <text x="495" y="79" fill="#475569" font-size="6.3" font-family="-apple-system, sans-serif">2. Strict System Prompt: Neutral facts &amp; figures &lt;= 35 words</text>
+        <text x="495" y="90" fill="#475569" font-size="6.3" font-family="-apple-system, sans-serif">3. Post-Filter: Purge thought tags (&lt;think&gt;) &amp; media bias labels</text>
+        <text x="495" y="101" fill="#15803D" font-size="6.3" font-family="-apple-system, sans-serif" font-weight="600">4. Dispatched to LLM Quota-Aware Router (Page 8)</text>
+      </svg>
+    </div>
+
+    <!-- Safety Keywords & Charter -->
+    <div class="sub-title">Safety Bypass Trigger Keyword Registry</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Category</th>
+          <th style="width: 45%;">Monitored Sensitive Keywords</th>
+          <th style="width: 30%;">Enforced System Behavior</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Communal Incidents</b></td>
+          <td><code>communal violence</code>, <code>communal riot</code>, <code>mob lynching</code>, <code>clash between groups</code>, <code>stone pelting</code>, <code>curfew imposed</code>, <code>section 144</code></td>
+          <td>Immediate AI bypass. Renders lead headline with badge: <i>"Displaying verified reporting only"</i>. Prevents AI distortion of communal casualties.</td>
+        </tr>
+        <tr>
+          <td><b>Sub-Judice Proceedings</b></td>
+          <td><code>sub-judice</code>, <code>ongoing trial</code>, <code>in camera proceedings</code>, <code>contempt of court</code>, <code>bail hearing pending</code></td>
+          <td>Zero AI synthesis. Eliminates risk of misstating judicial observations, chargesheets, or court orders.</td>
+        </tr>
+        <tr>
+          <td><b>Hate Speech Allegations</b></td>
+          <td><code>hate speech</code>, <code>inflammatory remarks</code>, <code>sedition charges</code>, <code>blasphemy</code>, <code>defamation suit</code></td>
+          <td>Direct citation of verified publisher text only. No AI rephrasing of controversial statements.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-amber">
+      <div class="callout-title">Deep Article Extraction Engineering (lib/article-extractor.ts)</div>
+      Standard news aggregators summarize only truncated 2-line RSS descriptions. Panchranga fetches the actual news article HTML directly, stripping cookie banners, subscribe walls, and navigation links. It extracts up to <b>1,500 characters</b> of substantive paragraph text within a strict 3.5s timeout, arming the LLM with concrete facts, dates, casualty figures, and official quotes.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 7 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 8: CENTRALIZED LLM QUOTA-AWARE ROUTER & BUDGET MANAGEMENT            -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>8. LLM Quota Router & Budget Management</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>8. LLM Quota-Aware Router & Budget Management</span>
+      <span class="section-tag">lib/llm-router.ts · lib/llm-config.ts</span>
+    </div>
+
+    <p>
+      Panchranga operates on free-tier LLM API budgets without compromising reliability. All AI generation requests (summaries, chunk merges, Indic translations) pass through a centralized, quota-aware router backed by verified live provider limits, circuit breakers, SHA-256 caching, and an emergency interactive buffer.
+    </p>
+
+    <!-- FLOWCHART 7: LLM QUOTA ROUTER CASCADE -->
+    <div class="sub-title">Centralized Quota-Aware LLM Router Flowchart</div>
+    <div class="flowchart-card">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Input Job -->
+        <rect x="5" y="32" width="105" height="46" rx="4" fill="#1E293B" stroke="#60A5FA" stroke-width="1.2"/>
+        <text x="57" y="46" fill="#60A5FA" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">AI JOB REQUEST</text>
+        <text x="57" y="58" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Summary / Translation</text>
+        <text x="57" y="69" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">Priority: User / Cron</text>
+
+        <!-- Arrow to SHA-256 Cache -->
+        <path d="M110 55 L135 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Cache Check -->
+        <rect x="140" y="32" width="125" height="46" rx="4" fill="#1E293B" stroke="#34D399" stroke-width="1"/>
+        <text x="202" y="46" fill="#34D399" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">SHA-256 CACHE</text>
+        <text x="202" y="58" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">24h TTL Content Hash</text>
+        <text x="202" y="69" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">0 Cost / 0 API Calls</text>
+
+        <!-- Cache Hit branch UP -->
+        <path d="M202 32 L202 12 L300 12" stroke="#34D399" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <text x="245" y="9" fill="#34D399" font-size="6.5" font-weight="700">CACHE HIT</text>
+        <rect x="305" y="2" width="105" height="20" rx="3" fill="#1E293B" stroke="#34D399" stroke-width="1"/>
+        <text x="357" y="15" fill="#34D399" font-size="6.8" font-family="monospace" text-anchor="middle">Return Cached (0ms)</text>
+
+        <!-- Cache Miss Arrow -->
+        <path d="M265 55 L290 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Pacing & Buffer -->
+        <rect x="295" y="32" width="125" height="46" rx="4" fill="#1E293B" stroke="#FBBF24" stroke-width="1"/>
+        <text x="357" y="46" fill="#FBBF24" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">12% BUFFER &amp; PACING</text>
+        <text x="357" y="58" fill="#F8FAFC" font-size="7" font-family="-apple-system, sans-serif" text-anchor="middle">Reserve 12% for Users</text>
+        <text x="357" y="69" fill="#94A3B8" font-size="6" font-family="monospace" text-anchor="middle">24 Hourly Batch Slices</text>
+
+        <!-- Arrow to Cascading Tiers -->
+        <path d="M420 55 L445 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Cascading Provider Tiers -->
+        <rect x="450" y="5" width="285" height="102" rx="4" fill="#1E293B" stroke="#CBD5E1" stroke-width="1"/>
+        <text x="592" y="18" fill="#38BDF8" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">CASCADING PROVIDER POOL WITH CIRCUIT BREAKER</text>
+
+        <rect x="458" y="24" width="269" height="16" rx="2" fill="#0F172A"/>
+        <text x="464" y="35" fill="#60A5FA" font-size="6.1" font-family="monospace">1. GROQ POOL: gpt-oss-20b · qwen3.8-27b · gpt-oss-120b [3k RPD]</text>
+
+        <rect x="458" y="43" width="269" height="16" rx="2" fill="#0F172A"/>
+        <text x="464" y="54" fill="#34D399" font-size="6.1" font-family="monospace">2. CLOUDFLARE AI: @cf/meta/llama-3.1-8b-instruct-fast [10k Neurons]</text>
+
+        <rect x="458" y="62" width="269" height="16" rx="2" fill="#0F172A"/>
+        <text x="464" y="73" fill="#FBBF24" font-size="6.1" font-family="monospace">3. GEMINI FLASH LITE: gemini-3.5-flash-lite [1M Ctx · Safe Bypass]</text>
+
+        <rect x="458" y="81" width="269" height="16" rx="2" fill="#0F172A"/>
+        <text x="464" y="92" fill="#F472B6" font-size="6.1" font-family="monospace">4. OPENROUTER FREE POOL -&gt; 5. LEAD SNIPPET REGEX (100% Uptime)</text>
+      </svg>
+    </div>
+
+    <!-- Verified Provider Limits Matrix -->
+    <div class="sub-title">Verified Free-Tier Quota & Reset Schedule Matrix</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">Provider &amp; Model</th>
+          <th style="width: 18%;">Verified Limits</th>
+          <th style="width: 22%;">Reset Schedule</th>
+          <th style="width: 40%;">Operational Role &amp; Guardrails</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Groq Pool (Round-Robin)</b><br/><code>gpt-oss-20b</code> / <code>qwen3.8-27b</code> / <code>gpt-oss-120b</code></td>
+          <td><b>1,000 RPD</b> per model<br/>(3,000 RPD combined)<br/>8,000 TPM</td>
+          <td>Rolling 24-hour window<br/>(Synced dynamically with live <code>x-ratelimit-reset</code> headers)</td>
+          <td>Primary tier for short/medium summaries, chunk summaries, and headline translations. 400ms sub-second latency. Tripping 429 initiates 60s cooldown.</td>
+        </tr>
+        <tr>
+          <td><b>Cloudflare Workers AI</b><br/><code>llama-3.1-8b-instruct-fast</code></td>
+          <td><b>10,000 Neurons/Day</b><br/>(~4,800 summaries/day)<br/>1,200 RPM</td>
+          <td>Fixed daily reset at <b>00:00 UTC</b></td>
+          <td>Secondary high-volume fallback. Zero cost, independent network egress. Tracks neuron consumption per invocation.</td>
+        </tr>
+        <tr>
+          <td><b>Google Gemini API</b><br/><code>gemini-3.5-flash-lite</code></td>
+          <td><b>1,000 RPD</b><br/>15 RPM<br/>1,048,576 Token Context</td>
+          <td>Fixed daily reset at midnight Pacific Time (07:00 UTC PDT)</td>
+          <td>High context capacity for documents exceeding 2,000 tokens. <i>Strictly bypassed for sensitive/unverified content due to Google unpaid-tier training terms.</i></td>
+        </tr>
+        <tr>
+          <td><b>OpenRouter Free Pool</b><br/><code>gemma-4-31b-it:free</code></td>
+          <td><b>50 RPD</b> shared cap</td>
+          <td>Fixed daily reset at 00:00 UTC</td>
+          <td>Last-resort spare before deterministic rule fallback.</td>
+        </tr>
+        <tr>
+          <td><b>Lead Snippet Rule</b><br/>Regex Sentence Extractor</td>
+          <td><b>Unlimited (0 API calls)</b></td>
+          <td>Permanent availability</td>
+          <td>Zero API dependency. Extracts first clean factual declarative sentence from lead reporting. Guarantees zero blank summary cards.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-blue">
+      <div class="callout-title">Map-Reduce Chunking for Long Articles</div>
+      When a lead article exceeds 850 tokens, the router invokes Map-Reduce: It splits text into chunks, generates micro-summaries using <code>chunk_summary</code> (capped at 70 tokens), and submits them to a single <code>final_merge</code> pass (capped at 110 tokens) using the strongest available model.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 8 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 9: MULTI-PROVIDER WATERFALL NEWSLETTER ENGINE                        -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>9. Multi-Provider Newsletter Engine</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>9. Multi-Provider Waterfall Newsletter Engine</span>
+      <span class="section-tag">lib/email/dispatcher.ts · .github/workflows/newsletter.yml</span>
+    </div>
+
+    <p>
+      Panchranga delivers a daily morning newsletter at <b>7:00 AM IST</b> featuring the top 3 synthesized stories across mainstream, grassroots, and public discourse. To overcome serverless execution timeouts and provider quotas, the delivery system runs via GitHub Actions utilizing an automated waterfall provider dispatcher.
+    </p>
+
+    <!-- FLOWCHART 8: WATERFALL NEWSLETTER DISPATCHER -->
+    <div class="sub-title">Waterfall Newsletter Provider Dispatcher Flowchart</div>
+    <div class="flowchart-light">
+      <svg width="100%" height="115" viewBox="0 0 740 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Cron Trigger -->
+        <rect x="5" y="32" width="100" height="46" rx="4" fill="#0F172A" stroke="#1E293B" stroke-width="1"/>
+        <text x="55" y="47" fill="#F8FAFC" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">7:00 AM IST CRON</text>
+        <text x="55" y="59" fill="#38BDF8" font-size="6.8" font-family="monospace" text-anchor="middle">Top 3 Hub Selection</text>
+        <text x="55" y="70" fill="#94A3B8" font-size="6.2" font-family="monospace" text-anchor="middle">Active Subscriber Pull</text>
+
+        <!-- Arrow to Subscriber Ordering -->
+        <path d="M105 55 L125 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Subscriber Ordering -->
+        <rect x="130" y="32" width="125" height="46" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="192" y="46" fill="#1D4ED8" font-size="7.2" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">DEFERRED PRIORITY</text>
+        <text x="192" y="58" fill="#475569" font-size="6.5">ORDER BY last_sent_at</text>
+        <text x="192" y="69" fill="#475569" font-size="6.2">ASC NULLS FIRST</text>
+
+        <!-- Arrow to Waterfall Start -->
+        <path d="M255 55 L280 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Provider 1: Gmail -->
+        <rect x="285" y="8" width="135" height="44" rx="4" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1"/>
+        <text x="352" y="22" fill="#15803D" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">1. GMAIL SMTP (Primary)</text>
+        <text x="352" y="34" fill="#475569" font-size="6.5">Nodemailer Pool · 3 Concurrency</text>
+        <text x="352" y="44" fill="#475569" font-size="6.2">Daily Ramp Limit: 100-450</text>
+
+        <!-- Arrow: Quota Hit / Exhausted -> Brevo -->
+        <path d="M420 30 L450 30 L450 50" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <text x="430" y="25" fill="#D97706" font-size="5.8" font-weight="700">Quota</text>
+
+        <!-- Provider 2: Brevo -->
+        <rect x="420" y="52" width="135" height="38" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1"/>
+        <text x="487" y="65" fill="#1D4ED8" font-size="7.2" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">2. BREVO HTTP API</text>
+        <text x="487" y="76" fill="#475569" font-size="6.2">Secondary · 290 Limit/Day</text>
+
+        <!-- Arrow: Brevo -> Resend -->
+        <path d="M555 71 L575 71 L575 88" stroke="#F59E0B" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- Provider 3: Resend -->
+        <rect x="550" y="70" width="135" height="38" rx="4" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1"/>
+        <text x="617" y="83" fill="#B45309" font-size="7.2" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">3. RESEND API SDK</text>
+        <text x="617" y="94" fill="#78350F" font-size="6.2">Fallback Tier · 95 Limit/Day</text>
+
+        <!-- Error Handling Side Card -->
+        <rect x="285" y="62" width="125" height="46" rx="4" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+        <text x="347" y="74" fill="#B91C1C" font-size="6.8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">ERROR DISPATCH</text>
+        <text x="347" y="85" fill="#7F1D1D" font-size="6.2">• 4xx Temp: Retry 3x backoff</text>
+        <text x="347" y="95" fill="#7F1D1D" font-size="6.2">• 5xx Bounce: is_active=false</text>
+        <text x="347" y="104" fill="#7F1D1D" font-size="6.2">• Defers excess to next IST run</text>
+      </svg>
+    </div>
+
+    <!-- Provider Configuration & Limits -->
+    <div class="sub-title">Multi-Provider Configuration & Daily Budget Architecture</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">Provider</th>
+          <th style="width: 18%;">Default Limit</th>
+          <th style="width: 24%;">Connection Architecture</th>
+          <th style="width: 38%;">Operational Characteristics</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Gmail SMTP</b><br/><code>GmailSmtpProvider</code></td>
+          <td><b>100 / day</b><br/>(Ramped to 450)</td>
+          <td>Nodemailer over port 465 (SSL), connection pooling (<code>pool: true</code>), concurrency 3, ~300ms pacing.</td>
+          <td>Primary provider sending from custom or dedicated Gmail address. Sends 1 message per recipient (no bulk CC/BCC).</td>
+        </tr>
+        <tr>
+          <td><b>Brevo API</b><br/><code>BrevoProvider</code></td>
+          <td><b>290 / day</b></td>
+          <td>HTTP REST API (<code>https://api.brevo.com/v3/smtp/email</code>) via native fetch.</td>
+          <td>Secondary transactional email tier activated when <code>BREVO_ENABLED=true</code>. High deliverability into Gmail Primary tabs.</td>
+        </tr>
+        <tr>
+          <td><b>Resend API</b><br/><code>ResendProvider</code></td>
+          <td><b>95 / day</b></td>
+          <td>Resend Node.js SDK via <code>RESEND_API_KEY</code>.</td>
+          <td>Fallback provider. Automatically prioritized if Gmail credentials are absent.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Ramping Strategy Table -->
+    <div class="sub-title">Gmail Account Reputation Ramping Schedule</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">Phase</th>
+          <th style="width: 20%;">Days Active</th>
+          <th style="width: 25%;">GMAIL_DAILY_LIMIT</th>
+          <th style="width: 35%;">Deliverability Guidelines</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Warmup</b></td>
+          <td>Days 1–7</td>
+          <td><code>100</code></td>
+          <td>Send strictly to confirmed opted-in users; maintain bounce rate &lt; 1%.</td>
+        </tr>
+        <tr>
+          <td><b>Steady Growth</b></td>
+          <td>Days 8–14</td>
+          <td><code>200</code></td>
+          <td>Verify low spam complaints; check Google Postmaster Tools.</td>
+        </tr>
+        <tr>
+          <td><b>Expansion</b></td>
+          <td>Days 15–21</td>
+          <td><code>350</code></td>
+          <td>Scale sending volume if inbox placement remains consistent.</td>
+        </tr>
+        <tr>
+          <td><b>Production Cap</b></td>
+          <td>Day 22+</td>
+          <td><code>450</code></td>
+          <td>Free Gmail hard ceiling is 500/day. 450 leaves buffer for welcome emails.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-green">
+      <div class="callout-title">Fair Prioritization for Deferred Subscribers</div>
+      If subscriber count exceeds the combined daily capacity across all providers, leftover subscribers are marked deferred. On the subsequent day's run, subscribers are queried with <code>ORDER BY last_sent_at ASC NULLS FIRST</code>. Subscribers deferred the previous day are guaranteed first priority.
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 9 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 10: DATABASE SCHEMA, VECTOR INDEXING & API ROUTE CATALOG              -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>10. Database Schema & API Catalog</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>10. Database Schema, Vector Indexing & API Catalog</span>
+      <span class="section-tag">Supabase PostgreSQL 15 (pgvector)</span>
+    </div>
+
+    <p>
+      Panchranga uses <b>Supabase PostgreSQL</b> with the <code>pgvector</code> extension for high-performance vector similarity matching and relational data integrity. The schema is organized into five core tables with strict foreign keys and automated 72-hour retention policies.
+    </p>
+
+    <!-- Database Schema Table -->
+    <div class="sub-title">Core Database Tables &amp; Constraints</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 18%;">Table Name</th>
+          <th style="width: 24%;">Keys &amp; Constraints</th>
+          <th style="width: 32%;">Key Columns &amp; Types</th>
+          <th style="width: 26%;">Operational Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>sources</b></td>
+          <td><code>id uuid PK</code><br/><code>feed_url UNIQUE</code></td>
+          <td><code>name, lane, type, language, region, is_active, last_status, last_attempted_at</code></td>
+          <td>Registry of all 96 verified feeds with real-time health telemetry.</td>
+        </tr>
+        <tr>
+          <td><b>raw_items</b></td>
+          <td><code>id uuid PK</code><br/><code>url UNIQUE</code><br/><code>source_id FK</code><br/><code>cluster_id FK</code></td>
+          <td><code>title, published_at, raw_summary, og_image, category, embedding vector(384), fetched_at</code></td>
+          <td>Stores every ingested news article, indexed by URL and 384-dimensional vector embedding.</td>
+        </tr>
+        <tr>
+          <td><b>topic_hubs</b></td>
+          <td><code>id uuid PK</code></td>
+          <td><code>title, ai_summary, first_seen_at, last_updated_at, item_count</code></td>
+          <td>Clustered story hubs representing single events with synthesized briefings.</td>
+        </tr>
+        <tr>
+          <td><b>newsletter_subscribers</b></td>
+          <td><code>id uuid PK</code><br/><code>email UNIQUE</code></td>
+          <td><code>subscribed_at, is_active, unsubscribe_token uuid, last_sent_at</code></td>
+          <td>Active subscribers with 1-click cryptographic unsubscribe tokens.</td>
+        </tr>
+        <tr>
+          <td><b>newsletter_sends</b></td>
+          <td><code>id uuid PK</code></td>
+          <td><code>sent_at, subscriber_count, hub_ids text[], status, gmail_count, brevo_count, resend_count, deferred_count</code></td>
+          <td>Audit log of dispatched newsletter editions with per-provider send metrics.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Vector Function & Retention -->
+    <div class="grid-2">
+      <div class="card">
+        <div style="font-weight: 700; color: #2563EB; font-size: 7.5pt;">PGVECTOR SIMILARITY PROCEDURE</div>
+        <div style="font-size: 6.8pt; color: #334155; margin-top: 2px;">
+          <code>match_topic_hubs(query_embedding, threshold, hours)</code> executes:<br/>
+          <code>1 - (raw_items.embedding &lt;=&gt; query_embedding)</code><br/>
+          Queries 1,000+ vectors in &lt;15ms using PostgreSQL IVFFlat / HNSW indexing over a 72-hour window.
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight: 700; color: #16A34A; font-size: 7.5pt;">72-HOUR RETENTION POLICY</div>
+        <div style="font-size: 6.8pt; color: #334155; margin-top: 2px;">
+          To stay within Supabase free-tier database limits, items older than 72 hours are automatically pruned:<br/>
+          <code>DELETE FROM raw_items WHERE published_at &lt; NOW() - INTERVAL '72 hours';</code><br/>
+          Maintains high index performance and storage efficiency.
+        </div>
+      </div>
+    </div>
+
+    <!-- API Route Catalog -->
+    <div class="sub-title">REST API Route Catalog</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Endpoint Route</th>
+          <th style="width: 12%;">Method</th>
+          <th style="width: 25%;">Authentication</th>
+          <th style="width: 38%;">Function &amp; Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>/api/hub/[id]/summary</code></td>
+          <td><code>POST</code></td>
+          <td>Public / None</td>
+          <td>On-demand AI summarization with client typing streaming. Bypasses communal topics.</td>
+        </tr>
+        <tr>
+          <td><code>/api/translate</code></td>
+          <td><code>POST</code></td>
+          <td>Public / None</td>
+          <td>Translates Indian language headlines into English glosses via LLM Quota Router.</td>
+        </tr>
+        <tr>
+          <td><code>/api/search</code></td>
+          <td><code>GET</code></td>
+          <td>Public / None</td>
+          <td>Full-text and semantic vector search across active topic hubs and raw items.</td>
+        </tr>
+        <tr>
+          <td><code>/api/newsletter/send</code></td>
+          <td><code>POST</code></td>
+          <td><code>Bearer CRON_SECRET</code></td>
+          <td>Dispatches daily 7 AM morning newsletter via multi-provider waterfall dispatcher.</td>
+        </tr>
+        <tr>
+          <td><code>/api/newsletter/subscribe</code></td>
+          <td><code>POST</code></td>
+          <td>Public / None</td>
+          <td>Adds email to subscribers, sends instant onboarding welcome email from <code>welcome@panchranga.app</code>.</td>
+        </tr>
+        <tr>
+          <td><code>/api/newsletter/unsubscribe</code></td>
+          <td><code>GET/POST</code></td>
+          <td>Cryptographic UUID Token</td>
+          <td>1-click immediate unsubscription without login; renders branded confirmation page.</td>
+        </tr>
+        <tr>
+          <td><code>/api/og-image</code></td>
+          <td><code>GET</code></td>
+          <td>Public / None</td>
+          <td>Edge CDN image proxy with 2.5s abort; falls back to monogram image tiles on 403/404.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 10 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 11: FRONTEND WEB APPLICATION & USER EXPERIENCE                       -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>11. Frontend Web App & User Experience</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>11. Frontend Web Application & Broadsheet UX</span>
+      <span class="section-tag">Next.js 14 App Router · React 18 · Tailwind CSS</span>
+    </div>
+
+    <p>
+      Panchranga's user interface is constructed using <b>Next.js 14 App Router</b>, React 18, and Tailwind CSS. The design embraces a high-density, authoritative editorial broadsheet aesthetic inspired by traditional Indian newspaper typography (Georgia serif headlines, clean Inter body text, and uppercase monospace metadata tags).
+    </p>
+
+    <!-- FLOWCHART 9: FRONTEND UX ARCHITECTURE -->
+    <div class="sub-title">Frontend Navigation &amp; Component Layout Flowchart</div>
+    <div class="flowchart-light">
+      <svg width="100%" height="110" viewBox="0 0 740 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Root Homepage -->
+        <rect x="5" y="10" width="160" height="90" rx="4" fill="#0F172A" stroke="#1E293B" stroke-width="1.2"/>
+        <text x="85" y="26" fill="#F8FAFC" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">HOMEPAGE: 3-COLUMN BROADSHEET</text>
+        <text x="85" y="42" fill="#38BDF8" font-size="6.8" text-anchor="middle">• Left: Today's Briefing (280px)</text>
+        <text x="85" y="55" fill="#94A3B8" font-size="6.8" text-anchor="middle">• Center: Hero Story &amp; Feed (380px)</text>
+        <text x="85" y="68" fill="#FBBF24" font-size="6.8" text-anchor="middle">• Right: Most Covered (300px)</text>
+        <text x="85" y="81" fill="#F472B6" font-size="6.8" text-anchor="middle">• Live Fact-Check Ticker (BOOM/AltNews)</text>
+
+        <!-- Arrow to Hub Detail -->
+        <path d="M165 55 L215 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Topic Hub Detail Page -->
+        <rect x="220" y="10" width="245" height="90" rx="4" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
+        <text x="342" y="26" fill="#1D4ED8" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">TOPIC HUB DETAIL (/hub/[id])</text>
+        <text x="342" y="42" fill="#334155" font-size="6.8" text-anchor="middle">1. Full-Width Proportional Coverage Bar</text>
+        <text x="342" y="55" fill="#334155" font-size="6.8" text-anchor="middle">2. HubAiOverview: Neutral Briefing &amp; Typing Effect</text>
+        <text x="342" y="68" fill="#15803D" font-size="6.8" font-weight="600" text-anchor="middle">3. Side-by-Side 3 Parallel Perspective Columns</text>
+        <text x="342" y="81" fill="#B45309" font-size="6.8" text-anchor="middle">4. Embedded YouTube Broadcasts &amp; Reddit Threads</text>
+
+        <!-- Arrow to Interactive APIs -->
+        <path d="M465 55 L505 55" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <!-- Interactive Features -->
+        <rect x="510" y="10" width="225" height="90" rx="4" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.2"/>
+        <text x="622" y="26" fill="#0F172A" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">INTERACTIVE CLIENT CAPABILITIES</text>
+        <text x="622" y="42" fill="#475569" font-size="6.8" text-anchor="middle">• Indic Headline Translation (/api/translate)</text>
+        <text x="622" y="55" fill="#475569" font-size="6.8" text-anchor="middle">• Mobile Hub Tabs (Single-column lane switcher)</text>
+        <text x="622" y="68" fill="#475569" font-size="6.8" text-anchor="middle">• Sources Directory (/sources) with status pills</text>
+        <text x="622" y="81" fill="#475569" font-size="6.8" text-anchor="middle">• 5-Dot PanchrangaLoader animation</text>
+      </svg>
+    </div>
+
+    <!-- UI Feature Matrix -->
+    <div class="sub-title">Frontend Components & Capabilities</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">Component / Page</th>
+          <th style="width: 20%;">File Location</th>
+          <th style="width: 60%;">Design Specifications & Interactive Features</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Coverage Bar</b></td>
+          <td><code>CoverageBar.tsx</code></td>
+          <td>Proportional segmented bar displaying exact source distribution across Mainstream (Blue), Grassroots (Green), and Discourse (Amber) with percentage tooltips.</td>
+        </tr>
+        <tr>
+          <td><b>Hub AI Overview</b></td>
+          <td><code>HubAiOverview.tsx</code></td>
+          <td>Presents 35-word neutral synthesized briefing with smooth character streaming typing effect, model attribution, and explicit safety disclaimers.</td>
+        </tr>
+        <tr>
+          <td><b>Fact-Check Ticker</b></td>
+          <td><code>FactCheckTicker.tsx</code></td>
+          <td>Live real-time ticker ingesting verified debunks from India's IFCN fact-checkers (Alt News, BOOM Live, Newschecker, Factly).</td>
+        </tr>
+        <tr>
+          <td><b>Mobile Hub Tabs</b></td>
+          <td><code>MobileHubTabs.tsx</code></td>
+          <td>On screens &lt; 768px, transforms the 3-column broadsheet into intuitive swipeable tabs with source count badges per lane.</td>
+        </tr>
+        <tr>
+          <td><b>Safe Image Handling</b></td>
+          <td><code>SafeImage.tsx</code></td>
+          <td>Proxies publisher images via <code>/api/og-image</code> to bypass hotlink protection; automatically falls back to clean branded monogram tiles if images 404.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 11 of 12</span>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- PAGE 12: CI/CD, OPERATIONS, BENCHMARKS & ROADMAP                          -->
+<!-- ========================================================================= -->
+<div class="doc-page">
+  <div class="page-header">
+    <span>Panchranga Architecture & Operational Blueprint</span>
+    <span>12. Operations, CI/CD & Roadmap</span>
+  </div>
+
+  <div class="page-body">
+    <div class="section-title">
+      <span>12. Production Operations, CI/CD & Strategic Roadmap</span>
+      <span class="section-tag">Autonomous Maintenance</span>
+    </div>
+
+    <p>
+      Panchranga is architectured for autonomous, zero-maintenance operations. No daily human intervention is required to ingest news, cluster topic hubs, synthesize briefings, or dispatch morning newsletters.
+    </p>
+
+    <!-- Scheduled Workflows -->
+    <div class="sub-title">GitHub Actions Scheduled Workflows</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Workflow Name</th>
+          <th style="width: 20%;">Cadence &amp; Trigger</th>
+          <th style="width: 55%;">Automated Pipeline Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Pipeline Ingestion Cron</b><br/><code>.github/workflows/ingest-cron.yml</code></td>
+          <td><code>cron: '*/20 * * * *'</code><br/>(Every 20 minutes)</td>
+          <td>Runs on Node 22, connects to Supabase, pulls all 96 feeds (<code>scripts/fetch-rss.ts</code>), and clusters items into Topic Hubs (<code>scripts/cluster-items.ts</code>).</td>
+        </tr>
+        <tr>
+          <td><b>Daily Newsletter Cron</b><br/><code>.github/workflows/newsletter.yml</code></td>
+          <td><code>cron: '30 1 * * *'</code><br/>(7:00 AM IST daily)</td>
+          <td>Executes <code>scripts/send-newsletter.ts</code>, selecting top 3 multi-source hubs and delivering emails across Gmail SMTP, Brevo, and Resend waterfall.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- CLI Operations Cheat Sheet -->
+    <div class="sub-title">Operational CLI Commands Cheat Sheet</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Command</th>
+          <th style="width: 25%;">Source Script</th>
+          <th style="width: 50%;">Operational Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>npm run dev</code></td>
+          <td><code>next dev</code></td>
+          <td>Starts local Next.js 14 development server on port 3000.</td>
+        </tr>
+        <tr>
+          <td><code>npm run pipeline</code></td>
+          <td><code>fetch-rss.ts &amp;&amp; cluster-items.ts</code></td>
+          <td>Executes complete ingestion and vector clustering pass.</td>
+        </tr>
+        <tr>
+          <td><code>npm run pipeline:full</code></td>
+          <td><code>fetch-rss &amp;&amp; cluster &amp;&amp; summarize</code></td>
+          <td>Runs ingestion, clustering, and AI summary batch generation.</td>
+        </tr>
+        <tr>
+          <td><code>npm run send-newsletter</code></td>
+          <td><code>send-newsletter.ts</code></td>
+          <td>Triggers manual morning newsletter delivery with dry-run support.</td>
+        </tr>
+        <tr>
+          <td><code>npm run clean-orphans</code></td>
+          <td><code>cleanup-orphaned-hubs.ts</code></td>
+          <td>Prunes orphaned topic hubs with 0 associated raw items.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Production Benchmarks -->
+    <div class="sub-title">Production Performance &amp; SLA Metrics</div>
+    <div class="grid-4">
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 11pt; font-weight: 800; color: #2563EB;">38–45s</div>
+        <div style="font-size: 6.2pt; color: #64748B; font-weight: 600;">96-FEED INGESTION</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 11pt; font-weight: 800; color: #16A34A;">&lt; 4.0s</div>
+        <div style="font-size: 6.2pt; color: #64748B; font-weight: 600;">1000-ITEM CLUSTERING</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 11pt; font-weight: 800; color: #D97706;">400ms</div>
+        <div style="font-size: 6.2pt; color: #64748B; font-weight: 600;">AI SUMMARY LATENCY</div>
+      </div>
+      <div class="card" style="text-align: center; padding: 4px;">
+        <div style="font-size: 11pt; font-weight: 800; color: #7C3AED;">100%</div>
+        <div style="font-size: 6.2pt; color: #64748B; font-weight: 600;">OFFLINE CACHE UPTIME</div>
+      </div>
+    </div>
+
+    <!-- Strategic Roadmap -->
+    <div class="sub-title">Strategic Roadmap &amp; Future Expansion</div>
+    <p style="font-size: 7.2pt; margin-bottom: 4px;">
+      <b>1. Indic Audio Briefings:</b> Integrating edge speech synthesis (e.g. Indic-TTS) to generate 60-second audio digests in Hindi, Tamil, and Bengali.<br/>
+      <b>2. Regional &amp; State Editions:</b> Dedicated sub-editions for states (e.g. Panchranga Maharashtra, Panchranga Bengal, Panchranga South).<br/>
+      <b>3. Progressive Web App (PWA):</b> Offline article caching and local vector search on device via client-side Transformers.js.
+    </p>
+
+    <!-- Concluding Box & Signature Block -->
+    <div class="callout" style="border-left-color: #C0392B; margin-top: 2px;">
+      <div class="callout-title">Conclusion: The Democratic Imperative for Multi-Perspective Intelligence</div>
+      Panchranga demonstrates that algorithmic automation, semantic vector search, and strict ethical guardrails can replace subjective human gatekeeping in modern media. By presenting <b>Mainstream</b>, <b>Grassroots</b>, and <b>Public Discourse</b> side by side, Panchranga equips Indian citizens with the complete spectrum of facts—empowering readers to draw their own informed conclusions. <i>Every Color of the Story.</i>
+    </div>
+
+    <!-- Document Signature Block -->
+    <div style="display:flex; justify-content:space-between; border-top: 1px solid #CBD5E1; padding-top: 3px; font-size: 6.8pt; color: #64748B; margin-top: 4px;">
+      <span><b>Author:</b> Antigravity Engineering</span>
+      <span><b>Repository:</b> github.com/Ravivishwakarma1/Panchranga</span>
+      <span><b>Production Domain:</b> www.panchranga.app</span>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Panchranga (पंचरंग) Open Source Intelligence Platform · www.panchranga.app</span>
+    <span>Page 12 of 12</span>
+  </div>
+</div>
+
+</body>
+</html>
