@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SiteLoader from '@/components/SiteLoader';
+import CloudflareAnalytics from '@/components/CloudflareAnalytics';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL, isProduction } from '@/lib/config/site';
 
 export const metadata: Metadata = {
@@ -141,6 +142,9 @@ export default function RootLayout({
 
         {/* Full-width Ground News Footer */}
         <Footer />
+
+        {/* Cloudflare Web Analytics */}
+        <CloudflareAnalytics />
       </body>
     </html>
   );
