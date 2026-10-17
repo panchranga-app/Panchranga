@@ -440,7 +440,7 @@ export default function HomePageClient({
 
                 return (
                   <div key={`briefing-${hub.id}`} className="py-[16px] first:pt-0">
-                    <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group flex items-start gap-2.5">
+                    <Link href={`/hub/${encodeURIComponent(hub.id)}`} prefetch={false} className="group flex items-start gap-2.5">
                       {/* 72x52px Thumbnail */}
                       <div className="w-[72px] h-[52px] shrink-0 rounded overflow-hidden bg-[#E8E4DF]">
                         <SafeImage
@@ -510,7 +510,7 @@ export default function HomePageClient({
 
                   return (
                     <div key={`most-covered-${hub.id}`} className="py-3 first:pt-0">
-                      <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group flex items-start gap-2.5">
+                      <Link href={`/hub/${encodeURIComponent(hub.id)}`} prefetch={false} className="group flex items-start gap-2.5">
                         {/* 64x48px Thumbnail */}
                         <div className="w-[64px] h-[48px] shrink-0 rounded overflow-hidden bg-[#E8E4DF]">
                           <SafeImage
@@ -692,7 +692,7 @@ function HeroCard({ hub }: { hub: Hub }) {
             {hub.language && <LanguageBadge lang={hub.language} inverted />}
           </div>
 
-          <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="block group">
+          <Link href={`/hub/${encodeURIComponent(hub.id)}`} prefetch={false} className="block group">
             <h1 className="font-sans text-2xl sm:text-3xl font-bold text-white leading-tight group-hover:text-gray-200 transition-colors line-clamp-3">
               {hub.title}
             </h1>
@@ -724,6 +724,7 @@ function HeroCard({ hub }: { hub: Hub }) {
             <span>{totalSources} {totalSources === 1 ? 'source' : 'sources'} · Updated {timeAgo(hub.last_updated_at)}</span>
             <Link
               href={`/hub/${encodeURIComponent(hub.id)}`}
+              prefetch={false}
               className="text-white font-semibold hover:underline"
             >
               Explore hub →
@@ -782,7 +783,7 @@ function StoryListItem({ hub }: { hub: Hub }) {
         </div>
 
         {/* Headline */}
-        <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group block">
+        <Link href={`/hub/${encodeURIComponent(hub.id)}`} prefetch={false} className="group block">
           <h2 className="font-sans text-[20px] font-bold text-[#1A1A1A] leading-[1.3] group-hover:text-[#C0392B] transition-colors line-clamp-2">
             {hub.title}
           </h2>
@@ -814,6 +815,7 @@ function StoryListItem({ hub }: { hub: Hub }) {
           <span>Updated {timeAgo(hub.last_updated_at)}</span>
           <Link
             href={`/hub/${encodeURIComponent(hub.id)}`}
+            prefetch={false}
             className="text-[#C0392B] font-medium hover:underline text-xs"
           >
             Explore hub →
@@ -923,7 +925,7 @@ function TopicSection({ topicName, hubs }: { topicName: string; hubs: Hub[] }) {
 
               return (
                 <div key={`less-covered-${hub.id}`} className="pt-4 first:pt-0">
-                  <Link href={`/hub/${encodeURIComponent(hub.id)}`} className="group block space-y-2">
+                  <Link href={`/hub/${encodeURIComponent(hub.id)}`} prefetch={false} className="group block space-y-2">
                     <div className="w-full h-[120px] rounded-[6px] overflow-hidden bg-[#333333]">
                       <SafeImage
                         src={imageUrl}

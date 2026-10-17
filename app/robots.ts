@@ -16,11 +16,31 @@ export default function robots(): MetadataRoute.Robots {
 
   // Canonical production environment
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/api/', '/loader-demo'],
-    },
+    rules: [
+      {
+        userAgent: [
+          'Bytespider',
+          'PetalBot',
+          'SemrushBot',
+          'AhrefsBot',
+          'MJ12bot',
+          'DotBot',
+          'CCBot',
+          'GPTBot',
+          'ChatGPT-User',
+          'anthropic-ai',
+          'Claude-Web',
+          'cohere-ai',
+          'PerplexityBot',
+        ],
+        disallow: '/',
+      },
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/api/', '/loader-demo'],
+      },
+    ],
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

@@ -244,11 +244,7 @@ async function getClusteredData(): Promise<{ hubs: TopicHub[]; rawItems: RawItem
   return fallbackResult;
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams?: { q?: string; topic?: string; lang?: string };
-}) {
+export default async function HomePage() {
   const { hubs, rawItems } = await getClusteredData();
 
   // Map hubs into client format with computed counts and og_image
@@ -415,9 +411,6 @@ export default async function HomePage({
         hubs={gridHubs}
         heroHub={heroHub}
         factCheckItems={factCheckItems}
-        initialSearchQuery={searchParams?.q || ''}
-        initialTopic={searchParams?.topic || ''}
-        initialLanguage={searchParams?.lang || ''}
       />
     </Suspense>
   );

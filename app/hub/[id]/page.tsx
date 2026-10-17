@@ -12,7 +12,35 @@ import { timeAgo, resolveHubTimestamps } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
 import { SITE_URL } from '@/lib/config/site';
 
-export const revalidate = 60;
+export const revalidate = 1800; // 30 minutes ISR
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    if (supabase) {
+      const { data: dbHubs } = await supabase
+        .from('topic_hubs')
+        .select('id')
+        .order('last_updated_at', { ascending: false })
+        .limit(60);
+
+      if (dbHubs && dbHubs.length > 0) {
+        return dbHubs.map((h: any) => ({ id: h.id }));
+      }
+    }
+
+    const hubsPath = path.resolve(process.cwd(), 'data', 'topic-hubs.json');
+    if (fs.existsSync(hubsPath)) {
+      const hubs: TopicHub[] = JSON.parse(fs.readFileSync(hubsPath, 'utf-8'));
+      if (Array.isArray(hubs)) {
+        return hubs.slice(0, 60).map((h) => ({ id: h.id }));
+      }
+    }
+  } catch (err) {
+    console.warn('generateStaticParams fallback:', err);
+  }
+  return [];
+}
 
 interface PageProps {
   params: {
@@ -171,7 +199,7 @@ export default async function HubDetailPage({ params }: PageProps) {
   const hub = await getHubData(params.id);
 
   if (!hub || !hub.items || hub.items.length === 0) {
-    redirect('/');
+    notFound();
   }
 
   const safeItems: RawItem[] = (hub.items ?? []).map((item) => {
